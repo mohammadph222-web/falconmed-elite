@@ -1,0 +1,9 @@
+POST http://localhost:5000/api/queue/patient-arrival
+Content-Type: application/json
+
+{
+  "patient_id": "P100",
+  "patient_name": "Test Patient",
+  "branch_id": 1,
+  "service_type": "consultation"
+}

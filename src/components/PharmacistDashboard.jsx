@@ -1,20 +1,103 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, AlertCircle, Calendar } from 'lucide-react'
 import { generatePharmacistData, sadcoBenchmarkData, checkAlerts } from '../data/realData'
+import * as dashboardApiModule from '../services/dashboardApi'
+
+const { getMetrics, getHourlyData, getLiveStatus } = dashboardApiModule
 
 export default function PharmacistDashboard({ user }) {
   const [dateFrom, setDateFrom] = useState('2026-08-27')
   const [dateTo, setDateTo] = useState('2026-08-29')
+  
+  // Backend Data States
+  const [dashboardData, setDashboardData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const data = generatePharmacistData(user.employeeId)
-  const alerts = checkAlerts(data)
+  // Fetch Data from Backend
+  useEffect(() => {
+    console.log('🔵 useEffect started')
+    
+    const fetchData = async () => {
+      setLoading(true)
+      console.log('🟡 fetchData called')
+      
+      try {
+        console.log('🟢 Calling getMetrics...')
+        const metrics = await getMetrics()
+        console.log('✅ getMetrics returned:', metrics)
+        
+        console.log('🟢 Calling getHourlyData...')
+        const hourly = await getHourlyData(1)
+        console.log('✅ getHourlyData returned:', hourly)
+        
+        console.log('🟢 Calling getLiveStatus...')
+        const liveStatus = await getLiveStatus()
+        console.log('✅ getLiveStatus returned:', liveStatus)
+        
+        setDashboardData({
+          metrics,
+          hourly,
+          liveStatus
+        })
+        console.log('✅ dashboardData state updated')
+        setError(null)
+      } catch (err) {
+        console.error('❌ Error fetching data:', err)
+        setError(err.message)
+      }
+      setLoading(false)
+    }
+    
+    fetchData()
+  }, [dateFrom, dateTo])
 
-  const hourlyData = sadcoBenchmarkData.hourlyDistribution.map(h => ({
+  // ✅ CHECK LOADING STATE FIRST
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-16">
+          <p className="text-gray-600 text-lg">Loading dashboard data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ CHECK ERROR STATE
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-16">
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg inline-block">
+            <p className="text-red-700 font-semibold">❌ Error loading data</p>
+            <p className="text-red-600 text-sm mt-1">{error}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ USE REAL API DATA (with fallback to mock if needed)
+  const metrics = dashboardData?.metrics || generatePharmacistData(user.employeeId)
+  const hourlyData = dashboardData?.hourly || sadcoBenchmarkData.hourlyDistribution.map(h => ({
     time: h.time,
     patients: h.patients,
     avgServiceTime: 3.0 + Math.random() * 0.5,
   }))
+  
+  // Structure data for easy access
+  const data = {
+    name: user.name || 'Pharmacist',
+    totalPatients: metrics?.totalPatients || 189,
+    identified: metrics?.identified || 187,
+    unidentified: metrics?.unidentified || 2,
+    avgServiceTime: metrics?.avgServiceTime || 3,
+    avgWaitingTime: metrics?.avgWaitingTime || 5.08,
+    rating: metrics?.rating || 4.8
+  }
+
+  const alerts = checkAlerts(data)
 
   return (
     <div className="max-w-7xl mx-auto">
