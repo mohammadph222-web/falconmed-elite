@@ -7,7 +7,7 @@ export const getMetrics = async () => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const data = await response.json()
     console.log('✅ Metrics fetched:', data)
-    return data
+    return data.data || data  // تأكد أنك ترجع الـ data بشكل صحيح
   } catch (error) {
     console.error('❌ Error fetching metrics:', error)
     return null

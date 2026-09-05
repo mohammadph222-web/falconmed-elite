@@ -1,3 +1,4 @@
+import './styles/dashboard.css'
 import { useState, useEffect } from 'react'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
