@@ -17,6 +17,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import LivePatients from '../components/LivePatients'
 
 export default function PharmacistDashboard({ user }) {
   const [data, setData] = useState(null)
@@ -164,6 +165,9 @@ export default function PharmacistDashboard({ user }) {
           Export
         </button>
       </div>
+
+        {/* Live Patients Queue */}
+        <LivePatients />
 
       {/* KPI Cards */}
       <div className="kpi-cards-grid">
