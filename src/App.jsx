@@ -1,7 +1,7 @@
-import './styles/dashboard.css'
+import './styles/enhanced-dashboard.css'
 import { useState, useEffect } from 'react'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
+import DashboardLayout from './layouts/DashboardLayout'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -27,18 +27,18 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">💊</div>
-          <p className="text-gray-700 text-xl font-semibold">FalconMed Elite</p>
-          <p className="text-gray-500 text-sm mt-2">Loading...</p>
+          <div className="text-6xl mb-4 animate-bounce">💊</div>
+          <p className="text-slate-50 text-xl font-semibold">FalconMed Elite</p>
+          <p className="text-slate-400 text-sm mt-2">Loading...</p>
         </div>
       </div>
     )
   }
 
   return user ? (
-    <Dashboard user={user} onLogout={handleLogout} />
+    <DashboardLayout user={user} onLogout={handleLogout} />
   ) : (
     <Login onLoginSuccess={handleLoginSuccess} />
   )
