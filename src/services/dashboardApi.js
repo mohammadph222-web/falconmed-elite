@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
-//  API Layer - PRODUCTION READY v3
-//  جميع الـ 8 endpoints الجديدة + Demo Fallbacks
+//  API Layer - PRODUCTION READY v4
+//  ✅ FIXED: timeout 60000ms, better error handling
 // ═══════════════════════════════════════════════════════════
 
 const API_URL =
@@ -62,8 +62,9 @@ const apiRequest = async (endpoint, options = {}) => {
 
   return retryAsync(
     async () => {
+      // ✅ FIXED: 60000ms timeout (60 ثانية) بدل 10
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
 
       if (signal) {
         if (signal.aborted) {
@@ -74,12 +75,16 @@ const apiRequest = async (endpoint, options = {}) => {
       }
 
       try {
+        console.log(`📡 Requesting: ${API_URL}${endpoint}`)
+        
         const response = await fetch(`${API_URL}${endpoint}`, {
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
         })
 
         clearTimeout(timeoutId)
+
+        console.log(`✅ Response Status: ${response.status}`)
 
         if (!response.ok) {
           const error = new Error(`HTTP ${response.status}`)
@@ -95,9 +100,12 @@ const apiRequest = async (endpoint, options = {}) => {
           error.retryable = false
           throw error
         }
+        
+        console.log('✅ Data received:', json)
         return json
       } catch (error) {
         clearTimeout(timeoutId)
+        console.error('❌ Fetch error:', error)
         throw error
       }
     },
