@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import * as dashboardApiModule from '../services/dashboardApi'
 
-// ✅ استخدم الـ 4 Admin endpoints الجديدة
 const { 
   getNetworkStats, 
   getNetworkBranches, 
@@ -48,7 +47,6 @@ export default function AdminDashboard({ user }) {
       try {
         console.log('🔄 Fetching admin dashboard data...')
         
-        // ✅ جلب جميع البيانات من الـ 4 endpoints الجديدة
         const [statsRes, branchesRes, trendsRes, staffRes] = await Promise.all([
           getNetworkStats(dateFrom, dateTo),
           getNetworkBranches(dateFrom, dateTo),
@@ -61,7 +59,6 @@ export default function AdminDashboard({ user }) {
         console.log('✅ Trends:', trendsRes)
         console.log('✅ Staff:', staffRes)
 
-        // ✅ معالجة البيانات
         const stats = statsRes?.data || {}
         const branchesData = branchesRes?.data?.branches || []
         const trendsData = trendsRes?.data?.trends || []
@@ -86,10 +83,9 @@ export default function AdminDashboard({ user }) {
           stack: err?.stack
         })
         
-        // ✅ إذا فشل الـ API، استخدم demo data مع إظهار warning
         console.warn('⚠️ Using demo data - API unavailable')
         setIsDemoData(true)
-        setError(null) // لا نظهر error في UI، نستخدم demo بدل ما نظهر error page
+        setError(null)
       }
       setLoading(false)
     }
@@ -128,7 +124,6 @@ export default function AdminDashboard({ user }) {
 
   const stats = networkStats || {}
 
-  // ✅ Network-level metrics - من real data
   const networkData = {
     totalPatients: parseInt(stats?.total_patients) || 0,
     identified: parseInt(stats?.identified) || 0,
@@ -194,7 +189,6 @@ export default function AdminDashboard({ user }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
       <div className="border-b border-slate-700/50 sticky top-0 z-40 backdrop-blur-xl bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -219,14 +213,14 @@ export default function AdminDashboard({ user }) {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Filters */}
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Granularity</label>
+              <label htmlFor="adm-granularity" className="block text-sm font-semibold text-slate-300 mb-2">Granularity</label>
               <select
+                id="adm-granularity"
+                name="granularity"
                 value={granularity}
                 onChange={(e) => setGranularity(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
@@ -237,10 +231,12 @@ export default function AdminDashboard({ user }) {
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">From Date</label>
+              <label htmlFor="adm-from" className="block text-sm font-semibold text-slate-300 mb-2">From Date</label>
               <div className="relative">
                 <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
                 <input
+                  id="adm-from"
+                  name="dateFrom"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
@@ -249,10 +245,12 @@ export default function AdminDashboard({ user }) {
               </div>
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-300 mb-2">To Date</label>
+              <label htmlFor="adm-to" className="block text-sm font-semibold text-slate-300 mb-2">To Date</label>
               <div className="relative">
                 <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
                 <input
+                  id="adm-to"
+                  name="dateTo"
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
@@ -266,7 +264,6 @@ export default function AdminDashboard({ user }) {
           </div>
         </div>
 
-        {/* Network KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
           {networkKpis.map((kpi, idx) => {
             const Icon = kpi.icon
@@ -307,9 +304,7 @@ export default function AdminDashboard({ user }) {
           })}
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Network Trends */}
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-white">Network Trend ({granularity})</h2>
@@ -352,7 +347,6 @@ export default function AdminDashboard({ user }) {
             )}
           </div>
 
-          {/* Branch Performance */}
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all">
             <h2 className="text-lg font-bold text-white mb-6">Branch Performance Ranking</h2>
             
@@ -382,7 +376,6 @@ export default function AdminDashboard({ user }) {
           </div>
         </div>
 
-        {/* Branch Comparison Table */}
         {branches.length > 0 && (
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all mb-8">
             <h2 className="text-lg font-bold text-white mb-6">All Branches Summary</h2>
@@ -424,7 +417,6 @@ export default function AdminDashboard({ user }) {
           </div>
         )}
 
-        {/* Top Staff */}
         {staff.length > 0 && (
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6">
             <h2 className="text-lg font-bold text-white mb-6">Top Performing Staff (Network-wide)</h2>

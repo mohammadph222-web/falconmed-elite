@@ -1,489 +1,525 @@
-// ═══════════════════════════════════════════════════════════
-//  API Layer - PRODUCTION READY v4
-//  ✅ FIXED: timeout 60000ms, better error handling
-// ═══════════════════════════════════════════════════════════
+const API_URL = import.meta.env.VITE_API_URL || 'https://falconmed-backend.onrender.com/api'
 
-const API_URL =
-  import.meta.env.VITE_API_URL || 'https://falconmed-backend.onrender.com/api'
-
-// ═══════════════════════════════════════════════════════════
-//  Helpers
-// ═══════════════════════════════════════════════════════════
-
-const buildParams = (params = {}) => {
-  const search = new URLSearchParams()
-  Object.entries(params).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== '' &&
-      key !== 'branchId' &&
-      key !== 'limit'
-    ) {
-      search.append(key, value)
-    }
-  })
-  const query = search.toString()
-  return query ? `?${query}` : ''
-}
-
-const retryAsync = async (fn, maxRetries = 2, baseDelay = 300, signal) => {
-  let lastError
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      if (signal?.aborted) {
-        throw new DOMException('Aborted', 'AbortError')
-      }
-      return await fn()
-    } catch (err) {
-      const isClientError =
-        err?.status === 401 ||
-        err?.status === 403 ||
-        err?.status === 404
-      const isAbortError = err?.name === 'AbortError'
-      const isNonRetryable = err?.retryable === false
-
-      if (isAbortError || isClientError || isNonRetryable) {
-        throw err
-      }
-
-      lastError = err
-      if (attempt < maxRetries) {
-        const delay = baseDelay * Math.pow(2, attempt)
-        await new Promise(r => setTimeout(r, delay))
-      }
-    }
-  }
-  throw lastError
-}
-
-const apiRequest = async (endpoint, options = {}) => {
-  const { signal, retries = 2 } = options
-
-  return retryAsync(
-    async () => {
-      // ✅ FIXED: 60000ms timeout (60 ثانية) بدل 10
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000)
-
-      if (signal) {
-        if (signal.aborted) {
-          clearTimeout(timeoutId)
-          throw new DOMException('Aborted', 'AbortError')
-        }
-        signal.addEventListener('abort', () => controller.abort())
-      }
-
-      try {
-        console.log(`📡 Requesting: ${API_URL}${endpoint}`)
-        
-        const response = await fetch(`${API_URL}${endpoint}`, {
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-        })
-
-        clearTimeout(timeoutId)
-
-        console.log(`✅ Response Status: ${response.status}`)
-
-        if (!response.ok) {
-          const error = new Error(`HTTP ${response.status}`)
-          error.status = response.status
-          throw error
-        }
-
-        const json = await response.json()
-
-        if (json?.success === false) {
-          const error = new Error(json.message || 'Request failed')
-          error.status = 200
-          error.retryable = false
-          throw error
-        }
-        
-        console.log('✅ Data received:', json)
-        return json
-      } catch (error) {
-        clearTimeout(timeoutId)
-        console.error('❌ Fetch error:', error)
-        throw error
-      }
+const DEMO_DATA = {
+  stats: {
+    total_patients: '234',
+    identified: '230',
+    unidentified: '4',
+    avg_service_time: '20.00',
+    avg_waiting_time: '2.50',
+    serve_rate: '98.50',
+    staff_count: '5'
+  },
+  hourly: [
+    { time: '08:00', patients: 12 },
+    { time: '09:00', patients: 24 },
+    { time: '10:00', patients: 35 },
+    { time: '11:00', patients: 42 },
+    { time: '12:00', patients: 38 },
+    { time: '13:00', patients: 31 },
+    { time: '14:00', patients: 28 },
+    { time: '15:00', patients: 24 },
+    { time: '16:00', patients: 19 },
+    { time: '17:00', patients: 14 }
+  ],
+  performers: [
+    { staff_name: 'Ahmed Hassan', patients_served: 45, avg_service_time: 18, rating: 4.8 },
+    { staff_name: 'Sara Mohammed', patients_served: 42, avg_service_time: 19, rating: 4.7 },
+    { staff_name: 'Omar Ali', patients_served: 38, avg_service_time: 21, rating: 4.6 },
+    { staff_name: 'Fatima Khalid', patients_served: 36, avg_service_time: 20, rating: 4.5 },
+    { staff_name: 'Karim Saleh', patients_served: 33, avg_service_time: 22, rating: 4.4 }
+  ],
+  alerts: [
+    { 
+      title: 'High Wait Time Detected', 
+      message: 'Average wait time in Branch 1 exceeded 5 minutes during peak hours', 
+      severity: 'medium',
+      timestamp: new Date().toISOString()
     },
-    retries,
-    300,
-    signal
-  )
+    {
+      title: 'Low Staff Availability',
+      message: 'Only 2 pharmacists on duty while queue has 15+ patients',
+      severity: 'high',
+      timestamp: new Date().toISOString()
+    },
+    {
+      title: 'System Performance Normal',
+      message: 'All systems operating within normal parameters',
+      severity: 'low',
+      timestamp: new Date().toISOString()
+    }
+  ],
+  branches: [
+    { 
+      name: 'Branch 1 - Main', 
+      total_patients: 1800, 
+      identified: 1765, 
+      serve_rate: 98.1, 
+      avg_service_time: 20.5, 
+      staff_count: 5, 
+      status: 'Active',
+      waiting_patients: 8,
+      avg_waiting_time: 4.2
+    },
+    { 
+      name: 'Branch 2 - Al Ain', 
+      total_patients: 1650, 
+      identified: 1628, 
+      serve_rate: 98.7, 
+      avg_service_time: 19.2, 
+      staff_count: 4, 
+      status: 'Active',
+      waiting_patients: 5,
+      avg_waiting_time: 3.1
+    },
+    { 
+      name: 'Branch 3 - Khalifa', 
+      total_patients: 1920, 
+      identified: 1892, 
+      serve_rate: 98.5, 
+      avg_service_time: 21.3, 
+      staff_count: 5, 
+      status: 'Active',
+      waiting_patients: 12,
+      avg_waiting_time: 5.6
+    },
+    { 
+      name: 'Branch 4 - Mafraq', 
+      total_patients: 1750, 
+      identified: 1721, 
+      serve_rate: 98.3, 
+      avg_service_time: 20.1, 
+      staff_count: 4, 
+      status: 'Active',
+      waiting_patients: 6,
+      avg_waiting_time: 3.8
+    },
+    { 
+      name: 'Branch 5 - Startup', 
+      total_patients: 1750, 
+      identified: 1750, 
+      serve_rate: 100.0, 
+      avg_service_time: 18.9, 
+      staff_count: 5, 
+      status: 'Active',
+      waiting_patients: 3,
+      avg_waiting_time: 2.1
+    }
+  ],
+  trends: [
+    { date: '2026-08-22', patients: 980, identified: 960, served: 968 },
+    { date: '2026-08-23', patients: 1050, identified: 1030, served: 1038 },
+    { date: '2026-08-24', patients: 1120, identified: 1095, served: 1105 },
+    { date: '2026-08-25', patients: 1280, identified: 1250, served: 1268 },
+    { date: '2026-08-26', patients: 1450, identified: 1420, served: 1432 },
+    { date: '2026-08-27', patients: 1200, identified: 1175, served: 1190 },
+    { date: '2026-08-28', patients: 1450, identified: 1420, served: 1438 },
+    { date: '2026-08-29', patients: 1670, identified: 1640, served: 1655 }
+  ],
+  staff: [
+    { 
+      staff_name: 'Ahmed Hassan', 
+      branch_name: 'Branch 1 - Main', 
+      patients_served: 125, 
+      avg_service_time: 18.5, 
+      rating: 4.9,
+      shift: 'Morning',
+      performance: 'Excellent'
+    },
+    { 
+      staff_name: 'Fatima Ali', 
+      branch_name: 'Branch 2 - Al Ain', 
+      patients_served: 118, 
+      avg_service_time: 19.2, 
+      rating: 4.8,
+      shift: 'Morning',
+      performance: 'Excellent'
+    },
+    { 
+      staff_name: 'Mohammed Amin', 
+      branch_name: 'Branch 3 - Khalifa', 
+      patients_served: 115, 
+      avg_service_time: 20.1, 
+      rating: 4.7,
+      shift: 'Afternoon',
+      performance: 'Very Good'
+    },
+    { 
+      staff_name: 'Sara Mohammed', 
+      branch_name: 'Branch 4 - Mafraq', 
+      patients_served: 108, 
+      avg_service_time: 19.8, 
+      rating: 4.6,
+      shift: 'Morning',
+      performance: 'Very Good'
+    },
+    { 
+      staff_name: 'Omar Khalid', 
+      branch_name: 'Branch 5 - Startup', 
+      patients_served: 102, 
+      avg_service_time: 18.9, 
+      rating: 4.8,
+      shift: 'Afternoon',
+      performance: 'Excellent'
+    },
+    { 
+      staff_name: 'Layla Hassan', 
+      branch_name: 'Branch 1 - Main', 
+      patients_served: 98, 
+      avg_service_time: 21.2, 
+      rating: 4.5,
+      shift: 'Evening',
+      performance: 'Good'
+    },
+    { 
+      staff_name: 'Karim Saleh', 
+      branch_name: 'Branch 2 - Al Ain', 
+      patients_served: 95, 
+      avg_service_time: 20.5, 
+      rating: 4.4,
+      shift: 'Afternoon',
+      performance: 'Good'
+    },
+    { 
+      staff_name: 'Noor Ibrahim', 
+      branch_name: 'Branch 3 - Khalifa', 
+      patients_served: 92, 
+      avg_service_time: 22.1, 
+      rating: 4.3,
+      shift: 'Evening',
+      performance: 'Good'
+    },
+    { 
+      staff_name: 'Zainab Ahmed', 
+      branch_name: 'Branch 4 - Mafraq', 
+      patients_served: 88, 
+      avg_service_time: 21.8, 
+      rating: 4.2,
+      shift: 'Morning',
+      performance: 'Satisfactory'
+    },
+    { 
+      staff_name: 'Rashid Ali', 
+      branch_name: 'Branch 5 - Startup', 
+      patients_served: 85, 
+      avg_service_time: 20.3, 
+      rating: 4.1,
+      shift: 'Evening',
+      performance: 'Satisfactory'
+    }
+  ],
+  livePatients: [
+    { id: 1, name: 'Patient A', arrival_time: '09:15', service_time: 5, status: 'In Service', service_type: 'Consultation' },
+    { id: 2, name: 'Patient B', arrival_time: '09:22', service_time: 0, status: 'Waiting', service_type: 'Medication' },
+    { id: 3, name: 'Patient C', arrival_time: '09:28', service_time: 0, status: 'Waiting', service_type: 'Consultation' },
+    { id: 4, name: 'Patient D', arrival_time: '09:35', service_time: 0, status: 'Waiting', service_type: 'Vaccination' }
+  ]
 }
 
-const safeSlice = (data, limit) => {
-  if (!Array.isArray(data)) return []
-  return data.slice(0, limit)
+async function fetchWithTimeout(url, options = {}) {
+  const timeout = options.timeout || 60000 // 60 seconds default
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    console.log(`📡 API Request: ${url}`)
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    })
+    clearTimeout(timeoutId)
+    return response
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeout}ms`)
+    }
+    throw error
+  }
 }
 
-// ═══════════════════════════════════════════════════════════
-// ✅ REAL ENDPOINTS - PHARMACIST
-// ═══════════════════════════════════════════════════════════
+// ========== PHARMACIST ENDPOINTS ==========
 
-export const getStats = async (from = '', to = '', { signal, retries = 2 } = {}) => {
-  const query = buildParams({ from, to })
-  const result = await apiRequest(`/queue/stats${query}`, { signal, retries })
-  return { ...result, filters: { from, to } }
+export async function getStats(userId) {
+  try {
+    console.log(`🔄 [getStats] Fetching for user: ${userId}`)
+    const response = await fetchWithTimeout(`${API_URL}/queue/stats?userId=${userId}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getStats] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.stats }
+  } catch (error) {
+    console.warn('⚠️ [getStats] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+  }
 }
 
-export const getLivePatients = async ({ signal, retries = 2 } = {}) => {
-  return apiRequest('/queue/live-patients', { signal, retries })
+export async function getLivePatients() {
+  try {
+    console.log('🔄 [getLivePatients] Fetching live patients')
+    const response = await fetchWithTimeout(`${API_URL}/queue/live-patients`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getLivePatients] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.livePatients }
+  } catch (error) {
+    console.warn('⚠️ [getLivePatients] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.livePatients, isDemoData: true }
+  }
 }
 
-export const getHourlyData = async (
-  userId,
-  { from = '', to = '', signal, retries = 2 } = {}
-) => {
-  const query = buildParams({ from, to })
-  const result = await apiRequest(`/dashboard/hourly/${userId || 1}${query}`, {
-    signal,
-    retries,
+export async function getHourlyData(userId) {
+  try {
+    console.log(`🔄 [getHourlyData] Fetching for user: ${userId}`)
+    const response = await fetchWithTimeout(`${API_URL}/dashboard/hourly/${userId}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getHourlyData] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.hourly }
+  } catch (error) {
+    console.warn('⚠️ [getHourlyData] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.hourly, isDemoData: true }
+  }
+}
+
+export async function getMetrics(dateFrom, dateTo) {
+  try {
+    console.log(`🔄 [getMetrics] Fetching from ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/dashboard/metrics?from=${dateFrom}&to=${dateTo}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getMetrics] Success:', data)
+    return { success: true, data: data.data || {} }
+  } catch (error) {
+    console.warn('⚠️ [getMetrics] Error, using demo data:', error.message)
+    return { success: true, data: {}, isDemoData: true }
+  }
+}
+
+// ========== MANAGER ENDPOINTS ==========
+
+export async function getBranchStats(branchId, dateFrom, dateTo) {
+  try {
+    console.log(`🔄 [getBranchStats] Branch ${branchId} from ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/branches/${branchId}/stats?from=${dateFrom}&to=${dateTo}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getBranchStats] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.stats }
+  } catch (error) {
+    console.warn('⚠️ [getBranchStats] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+  }
+}
+
+export async function getBranchPerformers(options = {}) {
+  try {
+    const { branchId, from, to, limit = 5 } = options
+    console.log(`🔄 [getBranchPerformers] Branch ${branchId}, limit: ${limit}`)
+    
+    let url = `${API_URL}/branches/${branchId}/performers`
+    const params = []
+    if (from) params.push(`from=${from}`)
+    if (to) params.push(`to=${to}`)
+    if (limit) params.push(`limit=${limit}`)
+    if (params.length) url += '?' + params.join('&')
+    
+    const response = await fetchWithTimeout(url)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getBranchPerformers] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.performers }
+  } catch (error) {
+    console.warn('⚠️ [getBranchPerformers] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.performers, isDemoData: true }
+  }
+}
+
+export async function getBranchHourly(branchId, dateFrom, dateTo) {
+  try {
+    console.log(`🔄 [getBranchHourly] Branch ${branchId} from ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/branches/${branchId}/hourly?from=${dateFrom}&to=${dateTo}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getBranchHourly] Success:', data)
+    return { success: true, data: data.data || { hourly: DEMO_DATA.hourly } }
+  } catch (error) {
+    console.warn('⚠️ [getBranchHourly] Error, using demo data:', error.message)
+    return { success: true, data: { hourly: DEMO_DATA.hourly }, isDemoData: true }
+  }
+}
+
+export async function getBranchAlerts(branchId) {
+  try {
+    console.log(`🔄 [getBranchAlerts] Branch ${branchId}`)
+    const response = await fetchWithTimeout(`${API_URL}/branches/${branchId}/alerts`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getBranchAlerts] Success:', data)
+    return { success: true, data: data.data || { alerts: DEMO_DATA.alerts } }
+  } catch (error) {
+    console.warn('⚠️ [getBranchAlerts] Error, using demo data:', error.message)
+    return { success: true, data: { alerts: DEMO_DATA.alerts }, isDemoData: true }
+  }
+}
+
+// ========== ADMIN ENDPOINTS ==========
+
+export async function getNetworkStats(dateFrom, dateTo) {
+  try {
+    console.log(`🔄 [getNetworkStats] From ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/network/stats?from=${dateFrom}&to=${dateTo}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getNetworkStats] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.stats }
+  } catch (error) {
+    console.warn('⚠️ [getNetworkStats] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+  }
+}
+
+export async function getNetworkBranches(dateFrom, dateTo) {
+  try {
+    console.log(`🔄 [getNetworkBranches] From ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/network/branches?from=${dateFrom}&to=${dateTo}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getNetworkBranches] Success:', data)
+    return { success: true, data: data.data || { branches: DEMO_DATA.branches } }
+  } catch (error) {
+    console.warn('⚠️ [getNetworkBranches] Error, using demo data:', error.message)
+    return { success: true, data: { branches: DEMO_DATA.branches }, isDemoData: true }
+  }
+}
+
+export async function getNetworkTrends(dateFrom, dateTo, granularity = 'daily') {
+  try {
+    console.log(`🔄 [getNetworkTrends] ${granularity} from ${dateFrom} to ${dateTo}`)
+    const response = await fetchWithTimeout(`${API_URL}/network/trends?from=${dateFrom}&to=${dateTo}&granularity=${granularity}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getNetworkTrends] Success:', data)
+    return { success: true, data: data.data || { trends: DEMO_DATA.trends } }
+  } catch (error) {
+    console.warn('⚠️ [getNetworkTrends] Error, using demo data:', error.message)
+    return { success: true, data: { trends: DEMO_DATA.trends }, isDemoData: true }
+  }
+}
+
+export async function getNetworkStaff(dateFrom, dateTo, limit = 10) {
+  try {
+    console.log(`🔄 [getNetworkStaff] From ${dateFrom} to ${dateTo}, limit: ${limit}`)
+    const response = await fetchWithTimeout(`${API_URL}/network/staff?from=${dateFrom}&to=${dateTo}&limit=${limit}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ [getNetworkStaff] Success:', data)
+    return { success: true, data: data.data || DEMO_DATA.staff }
+  } catch (error) {
+    console.warn('⚠️ [getNetworkStaff] Error, using demo data:', error.message)
+    return { success: true, data: DEMO_DATA.staff, isDemoData: true }
+  }
+}
+
+// ========== UTILITY FUNCTIONS ==========
+
+export function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
   })
-  return { ...result, filters: { userId, from, to } }
 }
 
-// ═══════════════════════════════════════════════════════════
-// ✅ REAL ENDPOINTS - MANAGER (NEW)
-// ═══════════════════════════════════════════════════════════
+export function formatTime(time) {
+  return new Date(time).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
-export const getBranchStats = async (
-  branchId,
-  from = '',
-  to = '',
-  { signal, retries = 2 } = {}
-) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/branches/${branchId}/stats${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { branchId, from, to } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn(`⚠️ Branch stats endpoint unavailable — using DEMO DATA (Branch ${branchId})`)
-    return {
-      data: {
-        total_patients: 234,
-        identified: 230,
-        unidentified: 4,
-        avg_service_time: 20.0,
-        avg_waiting_time: 2.5,
-        identified_percentage: 98.3,
-        staff_count: 5,
-        serve_rate: 98.5,
-      },
-      isDemoData: true,
-      filters: { branchId, from, to },
-    }
+export function calculateTrend(current, previous) {
+  if (!previous || previous === 0) return 0
+  return ((current - previous) / previous) * 100
+}
+
+export function getStatusColor(status) {
+  const colors = {
+    'Active': 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
+    'Inactive': 'bg-gray-500/20 border-gray-500/30 text-gray-400',
+    'Warning': 'bg-amber-500/20 border-amber-500/30 text-amber-400',
+    'Critical': 'bg-red-500/20 border-red-500/30 text-red-400'
   }
+  return colors[status] || colors.Inactive
 }
-
-export const getBranchPerformers = async ({
-  branchId,
-  from = '',
-  to = '',
-  limit = 5,
-  signal,
-  retries = 2,
-} = {}) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/branches/${branchId}/performers${query}`, {
-      signal,
-      retries,
-    })
-    return {
-      ...result,
-      data: safeSlice(result?.data?.performers || result?.data || [], limit),
-      isDemoData: false,
-      filters: { branchId, from, to, limit },
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn(`⚠️ Performers endpoint unavailable — using DEMO DATA`)
-    const performers = [
-      { staff_name: 'لما الـ رميث', patients_served: 189, avg_service_time: 2.8, rating: 4.9 },
-      { staff_name: 'فاطمة الـ عامري', patients_served: 176, avg_service_time: 3.1, rating: 4.7 },
-      { staff_name: 'أحمد الـ القابي', patients_served: 168, avg_service_time: 3.2, rating: 4.6 },
-      { staff_name: 'سارة الـ الشامسي', patients_served: 156, avg_service_time: 3.4, rating: 4.5 },
-      { staff_name: 'محمود الـ مزروعي', patients_served: 145, avg_service_time: 3.5, rating: 4.4 },
-    ]
-    return {
-      data: safeSlice(performers, limit),
-      isDemoData: true,
-      filters: { branchId, from, to, limit },
-    }
-  }
-}
-
-export const getBranchHourly = async (
-  branchId,
-  from = '',
-  to = '',
-  { signal, retries = 2 } = {}
-) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/branches/${branchId}/hourly${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { branchId, from, to } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn(`⚠️ Hourly endpoint unavailable — using DEMO DATA`)
-    return {
-      data: {
-        hourly: [
-          { time: '00:00', patients: 45, identified: 44, avgTime: 18 },
-          { time: '04:00', patients: 52, identified: 51, avgTime: 19 },
-          { time: '08:00', patients: 78, identified: 76, avgTime: 20 },
-          { time: '12:00', patients: 95, identified: 93, avgTime: 21 },
-          { time: '16:00', patients: 88, identified: 86, avgTime: 22 },
-          { time: '20:00', patients: 65, identified: 63, avgTime: 20 },
-          { time: '24:00', patients: 48, identified: 46, avgTime: 19 },
-        ],
-      },
-      isDemoData: true,
-      filters: { branchId, from, to },
-    }
-  }
-}
-
-export const getBranchAlerts = async (
-  branchId,
-  { signal, retries = 2 } = {}
-) => {
-  try {
-    const result = await apiRequest(`/branches/${branchId}/alerts`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { branchId } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn(`⚠️ Alerts endpoint unavailable — using DEMO DATA`)
-    return {
-      data: {
-        alerts: [
-          {
-            id: 'HIGH_QUEUE',
-            type: 'warning',
-            title: 'High Queue',
-            message: '20 patients waiting',
-            severity: 'high',
-          },
-          {
-            id: 'LOW_IDENTIFIED',
-            type: 'info',
-            title: 'Identification Rate',
-            message: 'Only 98.3% patients identified',
-            severity: 'medium',
-          },
-        ],
-        metrics: {
-          avg_waiting: 2.5,
-          current_queue: 20,
-          identified_rate: 98.3,
-        },
-      },
-      isDemoData: true,
-      filters: { branchId },
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// ✅ REAL ENDPOINTS - ADMIN (NEW)
-// ═══════════════════════════════════════════════════════════
-
-export const getNetworkStats = async (from = '', to = '', { signal, retries = 2 } = {}) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/network/stats${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { from, to } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn('⚠️ Network stats endpoint unavailable — using DEMO DATA')
-    return {
-      data: {
-        total_patients: 8870,
-        active_branches: 5,
-        identified: 8756,
-        unidentified: 114,
-        avg_service_time: 20.5,
-        avg_waiting_time: 2.8,
-        total_staff: 25,
-        identified_percentage: 98.7,
-        serve_rate: 98.7,
-        no_show_rate: 1.3,
-      },
-      isDemoData: true,
-      filters: { from, to },
-    }
-  }
-}
-
-export const getNetworkBranches = async (from = '', to = '', { signal, retries = 2 } = {}) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/network/branches${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { from, to } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn('⚠️ Network branches endpoint unavailable — using DEMO DATA')
-    return {
-      data: {
-        branches: [
-          { id: 1, name: 'Main Branch', total_patients: 1774, identified: 1757, serve_rate: 99.0, avg_service_time: 20.0, staff_count: 5, status: 'Excellent' },
-          { id: 2, name: 'Al Ain Branch', total_patients: 1650, identified: 1630, serve_rate: 98.8, avg_service_time: 20.5, staff_count: 5, status: 'Excellent' },
-          { id: 3, name: 'Khalifa Branch', total_patients: 1542, identified: 1520, serve_rate: 98.6, avg_service_time: 21.0, staff_count: 4, status: 'Good' },
-          { id: 4, name: 'Mafraq Branch', total_patients: 1489, identified: 1468, serve_rate: 98.6, avg_service_time: 21.0, staff_count: 4, status: 'Good' },
-          { id: 5, name: 'Startup Branch', total_patients: 1260, identified: 1240, serve_rate: 98.4, avg_service_time: 20.5, staff_count: 3, status: 'Good' },
-        ],
-      },
-      isDemoData: true,
-      filters: { from, to },
-    }
-  }
-}
-
-export const getNetworkTrends = async (
-  from = '',
-  to = '',
-  granularity = 'daily',
-  { signal, retries = 2 } = {}
-) => {
-  try {
-    const query = buildParams({ from, to, granularity })
-    const result = await apiRequest(`/network/trends${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { from, to, granularity } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn('⚠️ Network trends endpoint unavailable — using DEMO DATA')
-    return {
-      data: {
-        trends: [
-          { date: '2026-09-10', patients: 1200, identified: 1184, serveRate: 98.7, avgServiceTime: 20, avgWaitingTime: 2.5 },
-          { date: '2026-09-11', patients: 1300, identified: 1283, serveRate: 98.7, avgServiceTime: 20.5, avgWaitingTime: 2.8 },
-          { date: '2026-09-12', patients: 1400, identified: 1382, serveRate: 98.7, avgServiceTime: 21, avgWaitingTime: 3.0 },
-          { date: '2026-09-13', patients: 1450, identified: 1432, serveRate: 98.8, avgServiceTime: 20.5, avgWaitingTime: 2.7 },
-          { date: '2026-09-14', patients: 1380, identified: 1362, serveRate: 98.7, avgServiceTime: 20, avgWaitingTime: 2.5 },
-          { date: '2026-09-15', patients: 1320, identified: 1302, serveRate: 98.6, avgServiceTime: 20.5, avgWaitingTime: 2.8 },
-          { date: '2026-09-16', patients: 1400, identified: 1384, serveRate: 98.9, avgServiceTime: 21, avgWaitingTime: 3.0 },
-        ],
-      },
-      isDemoData: true,
-      filters: { from, to, granularity },
-    }
-  }
-}
-
-export const getNetworkStaff = async (
-  from = '',
-  to = '',
-  limit = 10,
-  { signal, retries = 2 } = {}
-) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/network/staff${query}`, {
-      signal,
-      retries,
-    })
-    return {
-      ...result,
-      data: safeSlice(result?.data?.staff || result?.data || [], limit),
-      isDemoData: false,
-      filters: { from, to, limit },
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn('⚠️ Network staff endpoint unavailable — using DEMO DATA')
-    const staff = [
-      { staff_name: 'رشا أحمد علي', branch_name: 'Main Branch', patients_served: 189, avg_service_time: 2.8, rating: 4.9 },
-      { staff_name: 'سارة خالد عمر', branch_name: 'Al Ain Branch', patients_served: 176, avg_service_time: 3.1, rating: 4.7 },
-      { staff_name: 'أحمد علي محمد', branch_name: 'Main Branch', patients_served: 168, avg_service_time: 3.2, rating: 4.6 },
-      { staff_name: 'أسيل علي أحمد', branch_name: 'Khalifa Branch', patients_served: 156, avg_service_time: 3.4, rating: 4.5 },
-      { staff_name: 'جميلة حمد علي', branch_name: 'Mafraq Branch', patients_served: 145, avg_service_time: 3.5, rating: 4.4 },
-      { staff_name: 'فهد محمد سالم', branch_name: 'Startup Branch', patients_served: 134, avg_service_time: 3.6, rating: 4.3 },
-      { staff_name: 'منار حسين الشامسية', branch_name: 'Al Ain Branch', patients_served: 125, avg_service_time: 3.7, rating: 4.2 },
-      { staff_name: 'سالمة محمد علي', branch_name: 'Main Branch', patients_served: 116, avg_service_time: 3.8, rating: 4.1 },
-      { staff_name: 'مريم علي ناصر', branch_name: 'Khalifa Branch', patients_served: 107, avg_service_time: 3.9, rating: 4.0 },
-      { staff_name: 'علي محمود أحمد', branch_name: 'Mafraq Branch', patients_served: 98, avg_service_time: 4.0, rating: 3.9 },
-    ]
-    return {
-      data: safeSlice(staff, limit),
-      isDemoData: true,
-      filters: { from, to, limit },
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// ⚠️ DEMO ENDPOINTS (Fallback)
-// ═══════════════════════════════════════════════════════════
-
-export const getMetrics = async (from = '', to = '', { signal, retries = 2 } = {}) => {
-  try {
-    const query = buildParams({ from, to })
-    const result = await apiRequest(`/dashboard/metrics${query}`, {
-      signal,
-      retries,
-    })
-    return { ...result, isDemoData: false, filters: { from, to } }
-  } catch (err) {
-    if (err.name === 'AbortError') throw err
-    console.warn('⚠️ Metrics endpoint unavailable — using DEMO DATA')
-    return {
-      data: {
-        total_patients: 1774,
-        identified: 1757,
-        unidentified: 17,
-        avg_service_time: 20.0,
-        avg_waiting_time: 2.5,
-        serve_rate: 99.0,
-      },
-      isDemoData: true,
-      filters: { from, to },
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// 📊 EXPORTS
-// ═══════════════════════════════════════════════════════════
 
 export default {
-  // Pharmacist
   getStats,
   getLivePatients,
   getHourlyData,
   getMetrics,
-  
-  // Manager
   getBranchStats,
   getBranchPerformers,
   getBranchHourly,
   getBranchAlerts,
-  
-  // Admin
   getNetworkStats,
   getNetworkBranches,
   getNetworkTrends,
   getNetworkStaff,
+  formatDate,
+  formatTime,
+  calculateTrend,
+  getStatusColor
 }
