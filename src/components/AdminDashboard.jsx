@@ -10,37 +10,70 @@ import {
 } from 'lucide-react'
 import * as dashboardApiModule from '../services/dashboardApi'
 
-const { getMetrics, getHourlyData, getLiveStatus } = dashboardApiModule
+// ✅ استخدم الـ 4 Admin endpoints الجديدة
+const { 
+  getNetworkStats, 
+  getNetworkBranches, 
+  getNetworkTrends, 
+  getNetworkStaff 
+} = dashboardApiModule
 
 export default function AdminDashboard({ user }) {
   const [dateFrom, setDateFrom] = useState('2026-08-27')
   const [dateTo, setDateTo] = useState('2026-08-29')
-  const [dashboardData, setDashboardData] = useState(null)
+  const [granularity, setGranularity] = useState('daily')
+  
+  const [networkStats, setNetworkStats] = useState(null)
+  const [branches, setBranches] = useState([])
+  const [trends, setTrends] = useState([])
+  const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isDemoData, setIsDemoData] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const [metricsResponse, hourlyResponse] = await Promise.all([
-          getMetrics(),
-          getHourlyData(1)
+        // ✅ جلب جميع البيانات من الـ 4 endpoints الجديدة
+        const [statsRes, branchesRes, trendsRes, staffRes] = await Promise.all([
+          getNetworkStats(dateFrom, dateTo),
+          getNetworkBranches(dateFrom, dateTo),
+          getNetworkTrends(dateFrom, dateTo, granularity),
+          getNetworkStaff(dateFrom, dateTo, 10),
         ])
 
-        const metrics = metricsResponse?.data || metricsResponse || null
-        const hourly = hourlyResponse?.data || hourlyResponse || []
+        // ✅ معالجة البيانات
+        const stats = statsRes?.data || {}
+        const branchesData = branchesRes?.data?.branches || []
+        const trendsData = trendsRes?.data?.trends || []
+        const staffData = staffRes?.data || []
 
-        setDashboardData({ metrics, hourly })
+        setNetworkStats(stats)
+        setBranches(branchesData)
+        setTrends(trendsData)
+        setStaff(staffData)
+        setIsDemoData(
+          statsRes?.isDemoData || 
+          branchesRes?.isDemoData || 
+          trendsRes?.isDemoData || 
+          staffRes?.isDemoData
+        )
+        
         setError(null)
       } catch (err) {
-        setError(err.message)
+        console.error('Error loading admin dashboard:', err)
+        setError(err?.message || 'Failed to load dashboard data')
+        setNetworkStats(null)
+        setBranches([])
+        setTrends([])
+        setStaff([])
       }
       setLoading(false)
     }
     
     fetchData()
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, granularity])
 
   if (loading) {
     return (
@@ -71,18 +104,19 @@ export default function AdminDashboard({ user }) {
     )
   }
 
-  const metrics = dashboardData?.metrics || null
-  const hourlyData = dashboardData?.hourly || []
+  const stats = networkStats || {}
 
-  // Network-level metrics (multiplied for multi-branch)
+  // ✅ Network-level metrics - من real data
   const networkData = {
-    totalPatients: (parseInt(metrics?.total_patients) || 0) * 5, // 5 branches
-    identified: (parseInt(metrics?.identified) || 0) * 5,
-    unidentified: (parseInt(metrics?.unidentified) || 0) * 5,
-    avgServeRate: 99.3,
-    avgNoShowRate: 0.7,
-    activeBranches: 5,
-    totalStaff: 25
+    totalPatients: parseInt(stats?.total_patients) || 0,
+    identified: parseInt(stats?.identified) || 0,
+    unidentified: parseInt(stats?.unidentified) || 0,
+    avgServeRate: parseFloat(stats?.serve_rate) || 0,
+    avgNoShowRate: 100 - (parseFloat(stats?.serve_rate) || 0),
+    activeBranches: parseInt(stats?.active_branches) || 0,
+    totalStaff: parseInt(stats?.total_staff) || 0,
+    avgWaitingTime: parseFloat(stats?.avg_waiting_time) || 0,
+    avgServiceTime: parseFloat(stats?.avg_service_time) || 0,
   }
 
   const networkKpis = [
@@ -111,12 +145,12 @@ export default function AdminDashboard({ user }) {
       trend: 0.3
     },
     {
-      label: 'Avg No-Show',
-      value: networkData.avgNoShowRate.toFixed(1),
-      unit: '%',
+      label: 'Avg Service Time',
+      value: networkData.avgServiceTime.toFixed(1),
+      unit: 'min',
       icon: TrendingDown,
-      color: 'from-red-500 to-pink-600',
-      trend: -0.1
+      color: 'from-orange-500 to-yellow-600',
+      trend: -0.5
     },
     {
       label: 'Active Branches',
@@ -143,17 +177,20 @@ export default function AdminDashboard({ user }) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Network Admin Dashboard
-              </h1>
-              <p className="text-slate-400 text-sm mt-1">All Branches Performance</p>
+              <h1 className="text-2xl font-bold text-white">Network Admin Dashboard</h1>
+              <p className="text-slate-400 text-sm mt-1">Real-time network performance analytics</p>
             </div>
-            <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400">
-                <Settings size={20} />
+            <div className="flex items-center gap-3">
+              {isDemoData && (
+                <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-xs font-semibold">
+                  ⚠️ Demo Data
+                </div>
+              )}
+              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
+                <Download size={18} className="text-slate-400" />
               </button>
-              <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400">
-                <Download size={20} />
+              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
+                <Settings size={18} className="text-slate-400" />
               </button>
             </div>
           </div>
@@ -162,9 +199,21 @@ export default function AdminDashboard({ user }) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Date Range Filter */}
-        <div className="mb-8 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
+        {/* Filters */}
+        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-slate-300 mb-2">Granularity</label>
+              <select
+                value={granularity}
+                onChange={(e) => setGranularity(e.target.value)}
+                className="w-full px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
             <div className="flex-1">
               <label className="block text-sm font-semibold text-slate-300 mb-2">From Date</label>
               <div className="relative">
@@ -238,116 +287,157 @@ export default function AdminDashboard({ user }) {
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Network Weekly Trend */}
+          {/* Network Trends */}
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white">Network Weekly Trend</h2>
+              <h2 className="text-lg font-bold text-white">Network Trend ({granularity})</h2>
               <Filter size={18} className="text-slate-400 cursor-pointer hover:text-slate-300" />
             </div>
             
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={hourlyData}>
-                <defs>
-                  <linearGradient id="colorNetwork" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="time" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #475569',
-                    borderRadius: '8px'
-                  }}
-                  labelStyle={{ color: '#e2e8f0' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="patients" 
-                  stroke="#a855f7" 
-                  fillOpacity={1} 
-                  fill="url(#colorNetwork)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {trends.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={trends}>
+                  <defs>
+                    <linearGradient id="colorNetwork" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="date" stroke="#64748b" />
+                  <YAxis stroke="#64748b" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#e2e8f0' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="patients" 
+                    stroke="#a855f7" 
+                    fillOpacity={1} 
+                    fill="url(#colorNetwork)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-slate-400">
+                No trend data available
+              </div>
+            )}
           </div>
 
           {/* Branch Performance */}
           <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all">
             <h2 className="text-lg font-bold text-white mb-6">Branch Performance Ranking</h2>
             
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={[
-                { name: 'Main Branch', patients: 1774, identified: 1757 },
-                { name: 'Al Ain Branch', patients: 1650, identified: 1631 },
-                { name: 'Khalifa Branch', patients: 1542, identified: 1521 },
-                { name: 'Mafraq Branch', patients: 1489, identified: 1467 },
-                { name: 'Startup Branch', patients: 1260, identified: 1238 }
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="name" stroke="#64748b" angle={-45} height={100} />
-                <YAxis stroke="#64748b" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #475569',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="patients" fill="#0ea5e9" name="Total Patients" />
-                <Bar dataKey="identified" fill="#10b981" name="Identified" />
-              </BarChart>
-            </ResponsiveContainer>
+            {branches.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={branches}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" stroke="#64748b" angle={-45} height={100} />
+                  <YAxis stroke="#64748b" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="total_patients" fill="#0ea5e9" name="Total Patients" />
+                  <Bar dataKey="identified" fill="#10b981" name="Identified" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-slate-400">
+                No branch data available
+              </div>
+            )}
           </div>
         </div>
 
         {/* Branch Comparison Table */}
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all">
-          <h2 className="text-lg font-bold text-white mb-6">All Branches Summary</h2>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-700/50">
-                  <th className="text-left py-4 px-4 text-slate-300 font-semibold">Branch</th>
-                  <th className="text-center py-4 px-4 text-slate-300 font-semibold">Total Patients</th>
-                  <th className="text-center py-4 px-4 text-slate-300 font-semibold">Identified</th>
-                  <th className="text-center py-4 px-4 text-slate-300 font-semibold">Serve Rate</th>
-                  <th className="text-center py-4 px-4 text-slate-300 font-semibold">Staff</th>
-                  <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: 'Main Branch', patients: 1774, identified: 1757, serveRate: 99.3, staff: 5, status: 'Excellent' },
-                  { name: 'Al Ain Branch', patients: 1650, identified: 1631, serveRate: 98.9, staff: 5, status: 'Excellent' },
-                  { name: 'Khalifa Branch', patients: 1542, identified: 1521, serveRate: 98.6, staff: 4, status: 'Good' },
-                  { name: 'Mafraq Branch', patients: 1489, identified: 1467, serveRate: 98.5, staff: 4, status: 'Good' },
-                  { name: 'Startup Branch', patients: 1260, identified: 1238, serveRate: 98.3, staff: 3, status: 'Good' }
-                ].map((branch, idx) => (
-                  <tr key={idx} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
-                    <td className="py-4 px-4 text-slate-200 font-medium">{branch.name}</td>
-                    <td className="text-center py-4 px-4 text-white">{branch.patients}</td>
-                    <td className="text-center py-4 px-4">
-                      <span className="text-emerald-400 font-semibold">{branch.identified}</span>
-                    </td>
-                    <td className="text-center py-4 px-4 text-green-400 font-semibold">{branch.serveRate}%</td>
-                    <td className="text-center py-4 px-4 text-blue-400 font-semibold">{branch.staff}</td>
-                    <td className="text-center py-4 px-4">
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        {branch.status}
-                      </span>
-                    </td>
+        {branches.length > 0 && (
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all mb-8">
+            <h2 className="text-lg font-bold text-white mb-6">All Branches Summary</h2>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700/50">
+                    <th className="text-left py-4 px-4 text-slate-300 font-semibold">Branch</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Total Patients</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Identified</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Serve Rate</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Avg Time</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Staff</th>
+                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {branches.map((branch, idx) => (
+                    <tr key={idx} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+                      <td className="py-4 px-4 text-slate-200 font-medium">{branch.name}</td>
+                      <td className="text-center py-4 px-4 text-white">{branch.total_patients}</td>
+                      <td className="text-center py-4 px-4">
+                        <span className="text-emerald-400 font-semibold">{branch.identified}</span>
+                      </td>
+                      <td className="text-center py-4 px-4 text-green-400 font-semibold">{branch.serve_rate?.toFixed(1)}%</td>
+                      <td className="text-center py-4 px-4 text-cyan-400 font-semibold">{branch.avg_service_time?.toFixed(1)}m</td>
+                      <td className="text-center py-4 px-4 text-blue-400 font-semibold">{branch.staff_count}</td>
+                      <td className="text-center py-4 px-4">
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          {branch.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Top Staff */}
+        {staff.length > 0 && (
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-6">Top Performing Staff (Network-wide)</h2>
+            
+            <div className="space-y-4">
+              {staff.map((person, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 bg-slate-900/30 border border-slate-700/30 rounded-lg hover:border-slate-600/50 transition-all">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">{idx + 1}</span>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{person.staff_name}</p>
+                      <p className="text-slate-400 text-xs">{person.branch_name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-slate-400 text-xs">Patients Served</p>
+                      <p className="text-white font-semibold">{person.patients_served}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-slate-400 text-xs">Avg Time</p>
+                      <p className="text-white font-semibold">{person.avg_service_time?.toFixed(1)}m</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-slate-400 text-xs">Rating</p>
+                      <p className="text-yellow-400 font-semibold">⭐ {person.rating?.toFixed(1)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
