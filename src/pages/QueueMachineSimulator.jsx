@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react'
 import { Plus, Send, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 
 export default function QueueMachineSimulator() {
+  // API Base - Works on localhost AND Vercel
+  const API_BASE = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:3000/api'
+    : 'https://falconmed-backend.onrender.com/api'
+
   const [patientData, setPatientData] = useState({
     patient_id: '',
     patient_name: '',
@@ -22,7 +27,7 @@ export default function QueueMachineSimulator() {
     const fetchStats = async () => {
       try {
         const response = await fetch(
-          'https://falconmed-backend.onrender.com/api/queue/stats?userId=ph_001'
+          `${API_BASE}/queue/stats?userId=ph_001`
         )
         const data = await response.json()
         if (data.success) setStats(data.data)
@@ -34,7 +39,7 @@ export default function QueueMachineSimulator() {
     fetchStats()
     const interval = setInterval(fetchStats, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [API_BASE])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -58,7 +63,7 @@ export default function QueueMachineSimulator() {
 
     try {
       const response = await fetch(
-        'https://falconmed-backend.onrender.com/api/queue/patient-arrival',
+        `${API_BASE}/queue/patient-arrival`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -255,8 +260,9 @@ export default function QueueMachineSimulator() {
               <h2 className="text-2xl font-bold mb-2">✅ API Status</h2>
               <p className="text-lg mb-4">Backend: <span className="font-bold">LIVE</span></p>
               <p className="text-sm">
-                Endpoint: https://falconmed-backend.onrender.com/api/queue/patient-arrival
+                Endpoint: {API_BASE}/queue/patient-arrival
               </p>
+              <p className="text-xs mt-2">Environment: {typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '🏠 Localhost' : '☁️ Vercel'}</p>
             </div>
 
             {/* Live Queue Stats */}
@@ -264,12 +270,30 @@ export default function QueueMachineSimulator() {
               <div className="bg-white rounded-xl shadow-xl p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Live Queue Statistics</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <StatBox title="Total Patients" value={stats.total_patients} color="blue" />
-                  <StatBox title="Waiting" value={stats.waiting} color="orange" />
-                  <StatBox title="In Service" value={stats.in_service} color="green" />
-                  <StatBox title="Identified" value={stats.identified} color="teal" />
-                  <StatBox title="Avg Wait (min)" value={stats.avg_waiting_time} color="purple" />
-                  <StatBox title="Avg Service (min)" value={stats.avg_service_time} color="indigo" />
+                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
+                    <p className="text-sm text-gray-600">Total Patients</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.total_patients}</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-600">
+                    <p className="text-sm text-gray-600">Waiting</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats.waiting}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
+                    <p className="text-sm text-gray-600">In Service</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.in_service}</p>
+                  </div>
+                  <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-600">
+                    <p className="text-sm text-gray-600">Identified</p>
+                    <p className="text-2xl font-bold text-teal-600">{stats.identified}</p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-600">
+                    <p className="text-sm text-gray-600">Avg Wait (min)</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.avg_waiting_time}</p>
+                  </div>
+                  <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-600">
+                    <p className="text-sm text-gray-600">Avg Service (min)</p>
+                    <p className="text-2xl font-bold text-indigo-600">{stats.avg_service_time}</p>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-4">🔄 Auto-refreshing every 5 seconds</p>
               </div>
@@ -315,31 +339,12 @@ export default function QueueMachineSimulator() {
                 <li>✅ Watch Queue Statistics update in real-time</li>
                 <li>✅ Check total patients, waiting, in service</li>
                 <li>✅ Monitor average wait & service times</li>
-                <li>✅ Repeat for more data!</li>
+                <li>✅ Works on Localhost AND Vercel!</li>
               </ul>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-// StatBox Component for Stats Display
-function StatBox({ title, value, color }) {
-  const colors = {
-    blue: 'bg-blue-50 border-blue-600 text-blue-600',
-    orange: 'bg-orange-50 border-orange-600 text-orange-600',
-    green: 'bg-green-50 border-green-600 text-green-600',
-    teal: 'bg-teal-50 border-teal-600 text-teal-600',
-    purple: 'bg-purple-50 border-purple-600 text-purple-600',
-    indigo: 'bg-indigo-50 border-indigo-600 text-indigo-600'
-  }
-  
-  return (
-    <div className={`${colors[color]} p-4 rounded-lg border-l-4`}>
-      <p className="text-sm text-gray-600">{title}</p>
-      <p className="text-2xl font-bold">{value}</p>
     </div>
   )
 }
