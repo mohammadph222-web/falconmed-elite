@@ -2,7 +2,6 @@ import './styles/enhanced-dashboard.css'
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
-import DashboardLayout from './layouts/DashboardLayout'
 import QueueMachineSimulator from './pages/QueueMachineSimulator'
 
 function App() {
@@ -13,6 +12,15 @@ function App() {
     const storedUser = localStorage.getItem('user')
     if (storedUser) {
       setUser(JSON.parse(storedUser))
+    } else {
+      const defaultUser = {
+        id: 'ph_001',
+        name: 'LAMA',
+        role: 'pharmacist',
+        email: 'lama@hospital.com'
+      }
+      setUser(defaultUser)
+      localStorage.setItem('user', JSON.stringify(defaultUser))
     }
     setLoading(false)
   }, [])
@@ -23,8 +31,14 @@ function App() {
   }
 
   const handleLogout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
+    const defaultUser = {
+      id: 'ph_001',
+      name: 'LAMA',
+      role: 'pharmacist',
+      email: 'lama@hospital.com'
+    }
+    setUser(defaultUser)
+    localStorage.setItem('user', JSON.stringify(defaultUser))
   }
 
   if (loading) {
@@ -42,23 +56,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Queue Machine Simulator - Public */}
         <Route path="/simulator" element={<QueueMachineSimulator />} />
-        
-        {/* Login Page */}
-        <Route path="/login" element={
-          user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />
-        } />
-        
-        {/* Dashboard - Protected */}
-        <Route path="/dashboard" element={
-          user ? <DashboardLayout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } />
-        
-        {/* Default Route */}
-        <Route path="/" element={
-          user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />
-        } />
+        <Route path="/dashboard" element={<QueueMachineSimulator />} />
+        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   )
