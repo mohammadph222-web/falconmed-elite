@@ -217,7 +217,7 @@ const DEMO_DATA = {
 }
 
 async function fetchWithTimeout(url, options = {}) {
-  const timeout = options.timeout || 60000 // 60 seconds default
+  const timeout = options.timeout || 60000
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
@@ -247,7 +247,7 @@ async function fetchWithTimeout(url, options = {}) {
 export async function getStats(userId) {
   try {
     console.log(`🔄 [getStats] Fetching for user: ${userId}`)
-    const response = await fetchWithTimeout(`${API_URL}/queue/stats?userId=${userId}`)
+    const response = await fetchWithTimeout(`${API_URL}/dashboard/stats/${userId}`)
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -257,15 +257,15 @@ export async function getStats(userId) {
     console.log('✅ [getStats] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.stats }
   } catch (error) {
-    console.warn('⚠️ [getStats] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+    console.warn('⚠️ [getStats] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ بدل إخفاؤه
   }
 }
 
 export async function getLivePatients() {
   try {
-    console.log('🔄 [getLivePatients] Fetching live patients')
-    const response = await fetchWithTimeout(`${API_URL}/queue/live-patients`)
+    console.log('🔄 [getLivePatients] Fetching...')
+    const response = await fetchWithTimeout(`${API_URL}/dashboard/live-patients`)
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -275,8 +275,8 @@ export async function getLivePatients() {
     console.log('✅ [getLivePatients] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.livePatients }
   } catch (error) {
-    console.warn('⚠️ [getLivePatients] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.livePatients, isDemoData: true }
+    console.warn('⚠️ [getLivePatients] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -293,26 +293,8 @@ export async function getHourlyData(userId) {
     console.log('✅ [getHourlyData] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.hourly }
   } catch (error) {
-    console.warn('⚠️ [getHourlyData] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.hourly, isDemoData: true }
-  }
-}
-
-export async function getMetrics(dateFrom, dateTo) {
-  try {
-    console.log(`🔄 [getMetrics] Fetching from ${dateFrom} to ${dateTo}`)
-    const response = await fetchWithTimeout(`${API_URL}/dashboard/metrics?from=${dateFrom}&to=${dateTo}`)
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-    
-    const data = await response.json()
-    console.log('✅ [getMetrics] Success:', data)
-    return { success: true, data: data.data || {} }
-  } catch (error) {
-    console.warn('⚠️ [getMetrics] Error, using demo data:', error.message)
-    return { success: true, data: {}, isDemoData: true }
+    console.warn('⚠️ [getHourlyData] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -331,8 +313,8 @@ export async function getBranchStats(branchId, dateFrom, dateTo) {
     console.log('✅ [getBranchStats] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.stats }
   } catch (error) {
-    console.warn('⚠️ [getBranchStats] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+    console.warn('⚠️ [getBranchStats] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -358,8 +340,8 @@ export async function getBranchPerformers(options = {}) {
     console.log('✅ [getBranchPerformers] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.performers }
   } catch (error) {
-    console.warn('⚠️ [getBranchPerformers] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.performers, isDemoData: true }
+    console.warn('⚠️ [getBranchPerformers] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -376,8 +358,8 @@ export async function getBranchHourly(branchId, dateFrom, dateTo) {
     console.log('✅ [getBranchHourly] Success:', data)
     return { success: true, data: data.data || { hourly: DEMO_DATA.hourly } }
   } catch (error) {
-    console.warn('⚠️ [getBranchHourly] Error, using demo data:', error.message)
-    return { success: true, data: { hourly: DEMO_DATA.hourly }, isDemoData: true }
+    console.warn('⚠️ [getBranchHourly] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -394,8 +376,8 @@ export async function getBranchAlerts(branchId) {
     console.log('✅ [getBranchAlerts] Success:', data)
     return { success: true, data: data.data || { alerts: DEMO_DATA.alerts } }
   } catch (error) {
-    console.warn('⚠️ [getBranchAlerts] Error, using demo data:', error.message)
-    return { success: true, data: { alerts: DEMO_DATA.alerts }, isDemoData: true }
+    console.warn('⚠️ [getBranchAlerts] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -414,8 +396,8 @@ export async function getNetworkStats(dateFrom, dateTo) {
     console.log('✅ [getNetworkStats] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.stats }
   } catch (error) {
-    console.warn('⚠️ [getNetworkStats] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.stats, isDemoData: true }
+    console.warn('⚠️ [getNetworkStats] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -432,8 +414,8 @@ export async function getNetworkBranches(dateFrom, dateTo) {
     console.log('✅ [getNetworkBranches] Success:', data)
     return { success: true, data: data.data || { branches: DEMO_DATA.branches } }
   } catch (error) {
-    console.warn('⚠️ [getNetworkBranches] Error, using demo data:', error.message)
-    return { success: true, data: { branches: DEMO_DATA.branches }, isDemoData: true }
+    console.warn('⚠️ [getNetworkBranches] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -450,8 +432,8 @@ export async function getNetworkTrends(dateFrom, dateTo, granularity = 'daily') 
     console.log('✅ [getNetworkTrends] Success:', data)
     return { success: true, data: data.data || { trends: DEMO_DATA.trends } }
   } catch (error) {
-    console.warn('⚠️ [getNetworkTrends] Error, using demo data:', error.message)
-    return { success: true, data: { trends: DEMO_DATA.trends }, isDemoData: true }
+    console.warn('⚠️ [getNetworkTrends] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -468,8 +450,8 @@ export async function getNetworkStaff(dateFrom, dateTo, limit = 10) {
     console.log('✅ [getNetworkStaff] Success:', data)
     return { success: true, data: data.data || DEMO_DATA.staff }
   } catch (error) {
-    console.warn('⚠️ [getNetworkStaff] Error, using demo data:', error.message)
-    return { success: true, data: DEMO_DATA.staff, isDemoData: true }
+    console.warn('⚠️ [getNetworkStaff] Error:', error.message)
+    throw error  // ✅ ارمِ الخطأ
   }
 }
 
@@ -509,7 +491,6 @@ export default {
   getStats,
   getLivePatients,
   getHourlyData,
-  getMetrics,
   getBranchStats,
   getBranchPerformers,
   getBranchHourly,

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, PieChart, Pie, Cell, RadarChart, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Radar
+  BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { 
   TrendingUp, TrendingDown, Users, AlertCircle, 
@@ -15,8 +13,7 @@ const {
   getBranchStats, 
   getBranchPerformers, 
   getBranchHourly, 
-  getBranchAlerts,
-  getMetrics
+  getBranchAlerts
 } = dashboardApiModule
 
 export default function ManagerDashboard({ user }) {
@@ -86,9 +83,9 @@ export default function ManagerDashboard({ user }) {
           stack: err?.stack
         })
         
-        console.warn('⚠️ Using demo data - API unavailable')
+        // ✅ الآن الـ catch يعمل فعلاً
+        setError(err?.message || 'Failed to load dashboard')
         setIsDemoData(true)
-        setError(null)
       }
       setLoading(false)
     }
@@ -118,6 +115,9 @@ export default function ManagerDashboard({ user }) {
             <div>
               <h3 className="text-red-300 font-semibold mb-2">Error Loading Dashboard</h3>
               <p className="text-red-200/70 text-sm">{error}</p>
+              {isDemoData && (
+                <p className="text-yellow-200/70 text-xs mt-2">Using demo data as fallback</p>
+              )}
             </div>
           </div>
         </div>
@@ -133,7 +133,6 @@ export default function ManagerDashboard({ user }) {
     identified: parseInt(stats?.identified) || 0,
     unidentified: parseInt(stats?.unidentified) || 0,
     serveRate: parseFloat(stats?.serve_rate) || 0,
-    noShowRate: 100 - (parseFloat(stats?.serve_rate) || 0),
     avgServiceTime: parseFloat(stats?.avg_service_time) || 0,
     avgWaitingTime: parseFloat(stats?.avg_waiting_time) || 0,
     staffCount: parseInt(stats?.staff_count) || 0,
@@ -198,83 +197,69 @@ export default function ManagerDashboard({ user }) {
             <div>
               <h1 className="text-2xl font-bold text-white">Branch Manager Dashboard</h1>
               <p className="text-slate-400 text-sm mt-1">Real-time branch performance analytics</p>
+              {isDemoData && (
+                <p className="text-amber-300/70 text-xs mt-1">⚠️ Displaying demo data</p>
+              )}
             </div>
             <div className="flex items-center gap-3">
-              {isDemoData && (
-                <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-xs font-semibold">
-                  ⚠️ Demo Data
-                </div>
-              )}
-              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
-                <Download size={18} className="text-slate-400" />
+              <button className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+                <Download size={20} className="text-slate-400" />
               </button>
-              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
-                <Settings size={18} className="text-slate-400" />
+              <button className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+                <Settings size={20} className="text-slate-400" />
               </button>
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-6 items-end">
+            <div className="flex-1 flex gap-4">
+              <div>
+                <label className="text-slate-300 text-sm mb-2 block">Branch</label>
+                <select
+                  value={branchId}
+                  onChange={(e) => setBranchId(parseInt(e.target.value))}
+                  className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
+                >
+                  <option value={1}>Branch 1 - Main</option>
+                  <option value={2}>Branch 2 - Al Ain</option>
+                  <option value={3}>Branch 3 - Khalifa</option>
+                  <option value={4}>Branch 4 - Mafraq</option>
+                  <option value={5}>Branch 5 - Startup</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-300 text-sm mb-2 block">From Date</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+              <div>
+                <label className="text-slate-300 text-sm mb-2 block">To Date</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+            </div>
+            <button className="px-6 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold hover:shadow-lg hover:shadow-emerald-500/50 transition-all">
+              Apply Filters
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label htmlFor="mgr-branch" className="block text-sm font-semibold text-slate-300 mb-2">Branch</label>
-              <select
-                id="mgr-branch"
-                name="branchId"
-                value={branchId}
-                onChange={(e) => setBranchId(parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-              >
-                <option value={1}>Branch 1 - Main</option>
-                <option value={2}>Branch 2 - Al Ain</option>
-                <option value={3}>Branch 3 - Khalifa</option>
-                <option value={4}>Branch 4 - Mafraq</option>
-                <option value={5}>Branch 5 - Startup</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label htmlFor="mgr-from" className="block text-sm font-semibold text-slate-300 mb-2">From Date</label>
-              <div className="relative">
-                <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  id="mgr-from"
-                  name="dateFrom"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
-              </div>
-            </div>
-            <div className="flex-1">
-              <label htmlFor="mgr-to" className="block text-sm font-semibold text-slate-300 mb-2">To Date</label>
-              <div className="relative">
-                <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  id="mgr-to"
-                  name="dateTo"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
-              </div>
-            </div>
-            <button className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all hover:shadow-lg hover:shadow-emerald-500/25">
-              Apply Filters
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          {branchKpis.map((kpi, idx) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {branchKpis.map((kpi) => {
             const Icon = kpi.icon
             return (
               <div
-                key={idx}
+                key={kpi.label}
                 className="relative group bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all hover:shadow-xl hover:shadow-slate-900/50 overflow-hidden"
               >
                 <div className="relative z-10">
@@ -408,7 +393,7 @@ export default function ManagerDashboard({ user }) {
             <div className="space-y-3">
               {alerts.map((alert, idx) => (
                 <div
-                  key={idx}
+                  key={alert.title || idx}
                   className={`p-4 rounded-lg border ${
                     alert.severity === 'high'
                       ? 'bg-red-500/10 border-red-500/30'
@@ -445,7 +430,7 @@ export default function ManagerDashboard({ user }) {
             
             <div className="space-y-4">
               {performers.map((performer, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-slate-900/30 border border-slate-700/30 rounded-lg hover:border-slate-600/50 transition-all">
+                <div key={performer.staff_name} className="flex items-center justify-between p-4 bg-slate-900/30 border border-slate-700/30 rounded-lg hover:border-slate-600/50 transition-all">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                       <span className="text-white font-bold text-sm">{idx + 1}</span>

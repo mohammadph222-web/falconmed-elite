@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Send, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 
 export default function QueueMachineSimulator() {
@@ -11,8 +11,30 @@ export default function QueueMachineSimulator() {
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [messageType, setMessageType] = useState('') // 'success' or 'error'
+  const [messageType, setMessageType] = useState('')
   const [history, setHistory] = useState([])
+  
+  // Live Stats State
+  const [stats, setStats] = useState(null)
+
+  // Fetch Live Stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(
+          'https://falconmed-backend.onrender.com/api/queue/stats?userId=ph_001'
+        )
+        const data = await response.json()
+        if (data.success) setStats(data.data)
+      } catch (error) {
+        console.error('Stats error:', error)
+      }
+    }
+
+    fetchStats()
+    const interval = setInterval(fetchStats, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -219,7 +241,7 @@ export default function QueueMachineSimulator() {
               <ol className="text-sm text-blue-800 space-y-1">
                 <li>1. Fill in patient info</li>
                 <li>2. Click Submit</li>
-                <li>3. Check Dashboard</li>
+                <li>3. Check Stats Below</li>
                 <li>4. Watch Real-time Update!</li>
               </ol>
             </div>
@@ -236,6 +258,22 @@ export default function QueueMachineSimulator() {
                 Endpoint: https://falconmed-backend.onrender.com/api/queue/patient-arrival
               </p>
             </div>
+
+            {/* Live Queue Stats */}
+            {stats && (
+              <div className="bg-white rounded-xl shadow-xl p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Live Queue Statistics</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <StatBox title="Total Patients" value={stats.total_patients} color="blue" />
+                  <StatBox title="Waiting" value={stats.waiting} color="orange" />
+                  <StatBox title="In Service" value={stats.in_service} color="green" />
+                  <StatBox title="Identified" value={stats.identified} color="teal" />
+                  <StatBox title="Avg Wait (min)" value={stats.avg_waiting_time} color="purple" />
+                  <StatBox title="Avg Service (min)" value={stats.avg_service_time} color="indigo" />
+                </div>
+                <p className="text-xs text-gray-500 mt-4">🔄 Auto-refreshing every 5 seconds</p>
+              </div>
+            )}
 
             {/* Registration History */}
             <div className="bg-white rounded-xl shadow-xl p-6">
@@ -274,15 +312,34 @@ export default function QueueMachineSimulator() {
               <h3 className="font-bold text-purple-900 mb-2">🚀 Next Steps:</h3>
               <ul className="text-sm text-purple-800 space-y-1">
                 <li>✅ Register patients via this simulator</li>
-                <li>✅ Watch Dashboard update in real-time</li>
-                <li>✅ Click "Patient Called" in Dashboard</li>
-                <li>✅ Click "Patient Finished" in Dashboard</li>
-                <li>✅ Monitor the Queue flow</li>
+                <li>✅ Watch Queue Statistics update in real-time</li>
+                <li>✅ Check total patients, waiting, in service</li>
+                <li>✅ Monitor average wait & service times</li>
+                <li>✅ Repeat for more data!</li>
               </ul>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// StatBox Component for Stats Display
+function StatBox({ title, value, color }) {
+  const colors = {
+    blue: 'bg-blue-50 border-blue-600 text-blue-600',
+    orange: 'bg-orange-50 border-orange-600 text-orange-600',
+    green: 'bg-green-50 border-green-600 text-green-600',
+    teal: 'bg-teal-50 border-teal-600 text-teal-600',
+    purple: 'bg-purple-50 border-purple-600 text-purple-600',
+    indigo: 'bg-indigo-50 border-indigo-600 text-indigo-600'
+  }
+  
+  return (
+    <div className={`${colors[color]} p-4 rounded-lg border-l-4`}>
+      <p className="text-sm text-gray-600">{title}</p>
+      <p className="text-2xl font-bold">{value}</p>
     </div>
   )
 }

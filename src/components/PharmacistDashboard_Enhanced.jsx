@@ -10,7 +10,8 @@ import LivePatients from '../components/LivePatients'
 //  Constants
 // ═══════════════════════════════════════════════════════════
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://falconmed-backend.onrender.com'
+// ✅ إصلاح: استخدم /api في النهاية لتتطابق مع dashboardApi.js
+const API_BASE = import.meta.env.VITE_API_URL || 'https://falconmed-backend.onrender.com/api'
 
 const SERVICE_TIME_TARGET = 20  // minutes (100% at 0, 0% at 20)
 const WAIT_TIME_TARGET = 5      // minutes
@@ -99,10 +100,11 @@ export default function PharmacistDashboard({ user }) {
 
         const hourlyUserId = user?.id ?? 1
 
+        // ✅ استخدم API_BASE بدل API_URL (جاهزة معها /api)
         // Parallel requests that don't kill each other
         const [statsSettled, hourlySettled] = await Promise.allSettled([
-          fetch(`${API_URL}/api/queue/stats?${params}`, { signal }),
-          fetch(`${API_URL}/api/dashboard/hourly/${hourlyUserId}?${params}`, { signal }),
+          fetch(`${API_BASE}/queue/stats?${params}`, { signal }),
+          fetch(`${API_BASE}/dashboard/hourly/${hourlyUserId}?${params}`, { signal }),
         ])
 
         if (requestId !== requestIdRef.current || !isMountedRef.current) return
@@ -331,6 +333,7 @@ export default function PharmacistDashboard({ user }) {
   //  Render States
   // ═════════════════════════════════════════════════════════
 
+  // ✅ إصلاح: استخدم `loading && !data` بدل `loading && !performanceMetrics.length`
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -515,7 +518,7 @@ export default function PharmacistDashboard({ user }) {
       {/* ─────────── Charts: Hourly + Performance ─────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartCard title="Hourly Distribution">
-          {loading && !hourlyData.length ? (
+          {loading && !data ? (
             <SkeletonChart />
           ) : hourlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -553,7 +556,7 @@ export default function PharmacistDashboard({ user }) {
             </span>
           }
         >
-          {loading && !performanceMetrics.length ? (
+          {loading && !data ? (
             <SkeletonChart />
           ) : performanceMetrics.some((m) => m.value !== null) ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -577,7 +580,7 @@ export default function PharmacistDashboard({ user }) {
       {/* ─────────── Patient Status + Quality ─────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartCard title="Patient Status">
-          {loading && !patientsData.length ? (
+          {loading && !data ? (
             <SkeletonChart />
           ) : patientsData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>

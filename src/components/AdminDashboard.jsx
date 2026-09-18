@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, PieChart, Pie, Cell
+  BarChart, Bar, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { 
   TrendingUp, TrendingDown, Globe, AlertCircle, 
@@ -83,9 +82,9 @@ export default function AdminDashboard({ user }) {
           stack: err?.stack
         })
         
-        console.warn('⚠️ Using demo data - API unavailable')
+        // ✅ الآن الـ catch يعمل فعلاً لأن dashboardApi ترمي الأخطاء
+        setError(err?.message || 'Failed to load dashboard')
         setIsDemoData(true)
-        setError(null)
       }
       setLoading(false)
     }
@@ -115,6 +114,9 @@ export default function AdminDashboard({ user }) {
             <div>
               <h3 className="text-red-300 font-semibold mb-2">Error Loading Dashboard</h3>
               <p className="text-red-200/70 text-sm">{error}</p>
+              {isDemoData && (
+                <p className="text-yellow-200/70 text-xs mt-2">Using demo data as fallback</p>
+              )}
             </div>
           </div>
         </div>
@@ -194,82 +196,68 @@ export default function AdminDashboard({ user }) {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-white">Network Admin Dashboard</h1>
-              <p className="text-slate-400 text-sm mt-1">Real-time network performance analytics</p>
+              <p className="text-slate-400 text-sm mt-1">Real-time branch performance analytics</p>
+              {isDemoData && (
+                <p className="text-amber-300/70 text-xs mt-1">⚠️ Displaying demo data</p>
+              )}
             </div>
             <div className="flex items-center gap-3">
-              {isDemoData && (
-                <div className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-xs font-semibold">
-                  ⚠️ Demo Data
-                </div>
-              )}
-              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
-                <Download size={18} className="text-slate-400" />
+              <button className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+                <Download size={20} className="text-slate-400" />
               </button>
-              <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
-                <Settings size={18} className="text-slate-400" />
+              <button className="p-2 rounded-lg hover:bg-slate-700/50 transition-colors">
+                <Settings size={20} className="text-slate-400" />
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label htmlFor="adm-granularity" className="block text-sm font-semibold text-slate-300 mb-2">Granularity</label>
+          <div className="flex flex-col sm:flex-row gap-4 mt-6 items-end">
+            <div className="flex-1 flex gap-4">
+              <div>
+                <label className="text-slate-300 text-sm mb-2 block">From Date</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+              <div>
+                <label className="text-slate-300 text-sm mb-2 block">To Date</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-slate-300 text-sm mb-2 block">Granularity</label>
               <select
-                id="adm-granularity"
-                name="granularity"
                 value={granularity}
                 onChange={(e) => setGranularity(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                className="px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 focus:outline-none focus:border-slate-600"
               >
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
             </div>
-            <div className="flex-1">
-              <label htmlFor="adm-from" className="block text-sm font-semibold text-slate-300 mb-2">From Date</label>
-              <div className="relative">
-                <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  id="adm-from"
-                  name="dateFrom"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                />
-              </div>
-            </div>
-            <div className="flex-1">
-              <label htmlFor="adm-to" className="block text-sm font-semibold text-slate-300 mb-2">To Date</label>
-              <div className="relative">
-                <Calendar size={18} className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  id="adm-to"
-                  name="dateTo"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700/30 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                />
-              </div>
-            </div>
-            <button className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/25">
+            <button className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all">
               Apply Filters
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          {networkKpis.map((kpi, idx) => {
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {networkKpis.map((kpi) => {
             const Icon = kpi.icon
             return (
               <div
-                key={idx}
+                key={kpi.label}
                 className="relative group bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all hover:shadow-xl hover:shadow-slate-900/50 overflow-hidden"
               >
                 <div className="relative z-10">
@@ -394,8 +382,8 @@ export default function AdminDashboard({ user }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {branches.map((branch, idx) => (
-                    <tr key={idx} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+                  {branches.map((branch) => (
+                    <tr key={branch.name} className="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
                       <td className="py-4 px-4 text-slate-200 font-medium">{branch.name}</td>
                       <td className="text-center py-4 px-4 text-white">{branch.total_patients}</td>
                       <td className="text-center py-4 px-4">
@@ -423,7 +411,7 @@ export default function AdminDashboard({ user }) {
             
             <div className="space-y-4">
               {staff.map((person, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-slate-900/30 border border-slate-700/30 rounded-lg hover:border-slate-600/50 transition-all">
+                <div key={person.staff_name} className="flex items-center justify-between p-4 bg-slate-900/30 border border-slate-700/30 rounded-lg hover:border-slate-600/50 transition-all">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                       <span className="text-white font-bold text-sm">{idx + 1}</span>
