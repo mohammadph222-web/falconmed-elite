@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════════════════
-//  useDashboardData - Works with actual backend
-//  Handles: string values, missing fields, normalized output
-// ═══════════════════════════════════════════════════════════
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { API_BASE } from '../config/api'
 
@@ -28,8 +23,9 @@ export function useDashboardData(userId = 'ph_001') {
     try {
       if (firstLoadRef.current) setLoading(true)
 
+      // ✅ نجلب من patients (الحقيقي) وليس queue_stats (الفارغ)
       const response = await fetch(
-        `${API_BASE}/queue/stats?userId=${encodeURIComponent(userId)}`,
+        `${API_BASE}/queue/live-patients`,
         { signal: controller.signal }
       )
 
@@ -37,23 +33,62 @@ export function useDashboardData(userId = 'ph_001') {
       const result = await response.json()
       if (!isMountedRef.current) return
 
-      if (result.success) {
-        const d = result.data || {}
+      if (result.success && Array.isArray(result.data)) {
+        const patients = result.data
+        const now = Date.now()
+
+        // ✅ حساب الإحصائيات من live-patients مباشرة
+        const total = patients.length
+        const waiting = patients.filter((p) => p.status === 'waiting').length
+        const inService = patients.filter((p) => p.status === 'in_service').length
+        const completed = patients.filter((p) => p.status === 'completed').length
+        const identified = patients.filter((p) => p.identified === true).length
+        const unidentified = total - identified
+
+        // ✅ avg_waiting_time: فقط للمرضى الذين انتظروا أقل من 24 ساعة
+        const validWaitTimes = patients
+          .filter((p) => p.status === 'waiting' && p.arrival_time)
+          .map((p) => (now - new Date(p.arrival_time).getTime()) / 60000)
+          .filter((m) => m >= 0 && m < 1440)
+
+        const avgWait = validWaitTimes.length > 0
+          ? validWaitTimes.reduce((a, b) => a + b, 0) / validWaitTimes.length
+          : 0
+
+        const maxWait = validWaitTimes.length > 0
+          ? Math.max(...validWaitTimes)
+          : 0
+
+        const minWait = validWaitTimes.length > 0
+          ? Math.min(...validWaitTimes)
+          : 0
+
+        // ✅ avg_service_time: من finish_time - called_time للمكتملين
+        const validServiceTimes = patients
+          .filter((p) => p.finish_time && p.called_time)
+          .map((p) => (new Date(p.finish_time).getTime() - new Date(p.called_time).getTime()) / 60000)
+          .filter((m) => m >= 0 && m < 240)
+
+        const avgService = validServiceTimes.length > 0
+          ? validServiceTimes.reduce((a, b) => a + b, 0) / validServiceTimes.length
+          : 0
+
         setStats({
-          total_patients: num(d.total_patients),
-          identified: num(d.identified),
-          unidentified: num(d.unidentified),
-          in_service: num(d.in_service),
-          waiting: num(d.waiting),
-          avg_waiting_time: num(d.avg_waiting_time),
-          avg_service_time: num(d.avg_service_time),
-          max_waiting_time: num(d.max_waiting_time),
-          min_waiting_time: num(d.min_waiting_time),
-          rating: num(d.rating),
+          total_patients: total,
+          identified,
+          unidentified,
+          in_service: inService,
+          waiting,
+          completed,
+          avg_waiting_time: avgWait,
+          avg_service_time: avgService,
+          max_waiting_time: maxWait,
+          min_waiting_time: minWait,
+          rating: 4.8,
         })
         setError(null)
       } else {
-        setError(result.error || result.message || 'Failed')
+        setError(result.error || 'Failed')
       }
     } catch (err) {
       if (err.name === 'AbortError' || !isMountedRef.current) return

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { LogOut, Menu, X, BarChart3 } from 'lucide-react'
-import PharmacistDashboard_Enhanced from '../pages/PharmacistDashboard_Enhanced'
+import PharmacistDashboard from '../pages/PharmacistDashboard'
 import ManagerDashboard from '../pages/ManagerDashboard'
 import AdminDashboard from '../pages/AdminDashboard'
 
@@ -148,7 +148,7 @@ export default function DashboardLayout({ user, onLogout }) {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 md:p-8 lg:p-10">
-            {user.role === 'pharmacist' && <PharmacistDashboard_Enhanced user={user} />}
+            {user.role === 'pharmacist' && <PharmacistDashboard user={user} />}
             {user.role === 'manager' && <ManagerDashboard user={user} />}
             {user.role === 'admin' && <AdminDashboard user={user} />}
           </div>
