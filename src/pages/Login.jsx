@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react'
 
 const demoUsers = {
@@ -8,7 +8,7 @@ const demoUsers = {
     name: 'LAMA AL-REMIT',
     role: 'pharmacist',
     employeeId: 1,
-    branchId: 'br_001',
+    branchId: '1',
     branch: 'Main Branch',
     password: '123456'
   },
@@ -17,7 +17,7 @@ const demoUsers = {
     email: 'manager@falconmed.com',
     name: 'Fatima Al-Ameri',
     role: 'manager',
-    branchId: 'br_001',
+    branchId: '1',
     branch: 'Main Branch',
     password: '123456'
   },
@@ -75,7 +75,7 @@ export default function Login({ onLoginSuccess }) {
           <div className="text-center mb-8">
             <div className="inline-block mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mx-auto">
-                <span className="text-white text-3xl">💊</span>
+                <span className="text-white text-3xl">ðŸ’Š</span>
               </div>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">FalconMed Elite</h1>
@@ -121,7 +121,7 @@ export default function Login({ onLoginSuccess }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg py-3 pl-10 pr-4 text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                    placeholder="••••••••"
+                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     required
                   />
                 </div>
@@ -149,27 +149,27 @@ export default function Login({ onLoginSuccess }) {
                 onClick={() => handleQuickLogin('pharmacist@falconmed.com')}
                 className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-blue-200 font-semibold py-3 rounded-lg transition-all mb-3"
               >
-                👨‍⚕️ Pharmacist Dashboard
+                ðŸ‘¨â€âš•ï¸ Pharmacist Dashboard
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('manager@falconmed.com')}
                 className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-200 font-semibold py-3 rounded-lg transition-all mb-3"
               >
-                👔 Manager Dashboard
+                ðŸ‘” Manager Dashboard
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin@falconmed.com')}
                 className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-2 border-purple-200 font-semibold py-3 rounded-lg transition-all"
               >
-                🔐 Admin Dashboard
+                ðŸ” Admin Dashboard
               </button>
             </div>
           </div>
 
           <div className="text-center text-gray-600 text-xs pb-4">
-            <p>© 2026 FalconMed • Professional Pharmacy Management</p>
+            <p>Â© 2026 FalconMed â€¢ Professional Pharmacy Management</p>
             <p className="mt-1 text-gray-500">Version 3.0 Elite Edition</p>
           </div>
         </div>
