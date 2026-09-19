@@ -1,90 +1,84 @@
 // ═══════════════════════════════════════════════════════════
-//  Hook - useDashboardData موحّد
+//  useDashboardData - Works with actual backend
+//  Handles: string values, missing fields, normalized output
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { API_BASE } from '../config/api'
 
-export function useDashboardData(fetchFunction, dependencies = []) {
-  const [data, setData] = useState(null)
+const num = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+export function useDashboardData(userId = 'ph_001') {
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [lastUpdated, setLastUpdated] = useState(null)
 
-  const requestIdRef = useRef(0)
-  const abortControllerRef = useRef(null)
   const isMountedRef = useRef(true)
+  const abortRef = useRef(null)
+  const firstLoadRef = useRef(true)
 
-  const fetchData = useCallback(
-    async ({ silent = false } = {}) => {
-      const requestId = ++requestIdRef.current
+  const fetchStats = useCallback(async () => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
-      // ✅ إلغاء الطلب السابق
-      abortControllerRef.current?.abort()
-      const controller = new AbortController()
-      abortControllerRef.current = controller
+    try {
+      if (firstLoadRef.current) setLoading(true)
 
-      if (!silent) setLoading(true)
-      else setRefreshing(true)
+      const response = await fetch(
+        `${API_BASE}/queue/stats?userId=${encodeURIComponent(userId)}`,
+        { signal: controller.signal }
+      )
 
-      try {
-        const result = await fetchFunction(controller.signal)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      if (!isMountedRef.current) return
 
-        // ✅ تجاهل إذا وصل طلب أحدث
-        if (requestId !== requestIdRef.current || !isMountedRef.current) return
-
-        setData(result)
-        setLastUpdated(new Date())
+      if (result.success) {
+        const d = result.data || {}
+        setStats({
+          total_patients: num(d.total_patients),
+          identified: num(d.identified),
+          unidentified: num(d.unidentified),
+          in_service: num(d.in_service),
+          waiting: num(d.waiting),
+          avg_waiting_time: num(d.avg_waiting_time),
+          avg_service_time: num(d.avg_service_time),
+          max_waiting_time: num(d.max_waiting_time),
+          min_waiting_time: num(d.min_waiting_time),
+          rating: num(d.rating),
+        })
         setError(null)
-      } catch (err) {
-        if (err.name === 'AbortError' || requestId !== requestIdRef.current || !isMountedRef.current) return
-
-        setError(err.message)
-      } finally {
-        if (requestId === requestIdRef.current && isMountedRef.current) {
-          if (!silent) setLoading(false)
-          else setRefreshing(false)
-        }
+      } else {
+        setError(result.error || result.message || 'Failed')
       }
-    },
-    [fetchFunction]
-  )
-
-  // ✅ أول مرة
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  // ✅ Auto-refresh مع visibility
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        return // لا تحدّث عندما تكون الصفحة مخفية
+    } catch (err) {
+      if (err.name === 'AbortError' || !isMountedRef.current) return
+      setError(err.message)
+    } finally {
+      if (firstLoadRef.current && isMountedRef.current) {
+        setLoading(false)
+        firstLoadRef.current = false
       }
-      fetchData({ silent: true })
     }
+  }, [userId])
 
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        fetchData({ silent: true })
-      }
-    }, 30000)
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [fetchData])
-
-  // ✅ Cleanup
   useEffect(() => {
+    isMountedRef.current = true
+    firstLoadRef.current = true
+
+    fetchStats()
+    const interval = setInterval(fetchStats, 5000)
+
     return () => {
       isMountedRef.current = false
-      abortControllerRef.current?.abort()
+      clearInterval(interval)
+      abortRef.current?.abort()
     }
-  }, [])
+  }, [fetchStats])
 
-  return { data, loading, refreshing, error, lastUpdated, refetch: fetchData }
+  return { stats, loading, error, refetch: fetchStats }
 }

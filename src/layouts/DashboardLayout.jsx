@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { LogOut, Menu, X, BarChart3 } from 'lucide-react'
-import PharmacistDashboard_Enhanced from '../components/PharmacistDashboard_Enhanced'
-import ManagerDashboard from '../components/ManagerDashboard'
-import AdminDashboard from '../components/AdminDashboard'
+import PharmacistDashboard_Enhanced from '../pages/PharmacistDashboard_Enhanced'
+import ManagerDashboard from '../pages/ManagerDashboard'
+import AdminDashboard from '../pages/AdminDashboard'
 
 export default function DashboardLayout({ user, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -11,7 +11,7 @@ export default function DashboardLayout({ user, onLogout }) {
     const roles = {
       pharmacist: 'Pharmacist',
       manager: 'Branch Manager',
-      admin: 'Administrator'
+      admin: 'Administrator',
     }
     return roles[role] || role
   }
@@ -20,7 +20,7 @@ export default function DashboardLayout({ user, onLogout }) {
     const icons = {
       pharmacist: '💊',
       manager: '👨‍💼',
-      admin: '👨‍💻'
+      admin: '👨‍💻',
     }
     return icons[role] || '👤'
   }
@@ -29,7 +29,7 @@ export default function DashboardLayout({ user, onLogout }) {
     const colors = {
       pharmacist: 'from-blue-500 to-blue-600',
       manager: 'from-emerald-500 to-emerald-600',
-      admin: 'from-purple-500 to-purple-600'
+      admin: 'from-purple-500 to-purple-600',
     }
     return colors[role] || 'from-slate-500 to-slate-600'
   }
@@ -124,7 +124,11 @@ export default function DashboardLayout({ user, onLogout }) {
       </div>
 
       {/* Main Content */}
-      <div className={`${sidebarOpen ? 'ml-64' : 'ml-24'} flex-1 flex flex-col transition-all duration-300 ease-out overflow-y-auto overflow-x-hidden`}>
+      <div
+        className={`${
+          sidebarOpen ? 'ml-64' : 'ml-24'
+        } flex-1 flex flex-col transition-all duration-300 ease-out overflow-y-auto overflow-x-hidden`}
+      >
         {/* Top Bar - Mobile */}
         <div className="md:hidden bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50 p-4 flex items-center gap-3">
           <button
