@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, Menu, X, BarChart3 } from 'lucide-react'
+import { LogOut, Menu, X, BarChart3, Stethoscope, Pill, Briefcase, ShieldCheck, User } from 'lucide-react'
 import PharmacistDashboard from '../pages/PharmacistDashboard'
 import ManagerDashboard from '../pages/ManagerDashboard'
 import AdminDashboard from '../pages/AdminDashboard'
@@ -16,13 +16,14 @@ export default function DashboardLayout({ user, onLogout }) {
     return roles[role] || role
   }
 
+  // ✅ دالة ترجع component بدل emoji
   const getRoleIcon = (role) => {
     const icons = {
-      pharmacist: '💊',
-      manager: '👨‍💼',
-      admin: '👨‍💻',
+      pharmacist: <Pill size={20} className="text-white" />,
+      manager: <Briefcase size={20} className="text-white" />,
+      admin: <ShieldCheck size={20} className="text-white" />,
     }
-    return icons[role] || '👤'
+    return icons[role] || <User size={20} className="text-white" />
   }
 
   const getRoleColor = (role) => {
@@ -46,8 +47,8 @@ export default function DashboardLayout({ user, onLogout }) {
         <div className="p-6 flex items-center justify-between border-b border-slate-700/50">
           {sidebarOpen && (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
-                💊
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg">
+                <Stethoscope size={20} className="text-white" />
               </div>
               <div>
                 <div className="text-slate-50 font-bold text-sm">FalconMed</div>
@@ -71,7 +72,7 @@ export default function DashboardLayout({ user, onLogout }) {
             )} text-white shadow-lg transition-all duration-300 hover:shadow-xl`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center font-bold text-base backdrop-blur-sm">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                 {getRoleIcon(user.role)}
               </div>
               <div>
@@ -138,8 +139,8 @@ export default function DashboardLayout({ user, onLogout }) {
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-              💊
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <Stethoscope size={16} className="text-white" />
             </div>
             <span className="text-slate-50 font-bold">FalconMed Elite</span>
           </div>

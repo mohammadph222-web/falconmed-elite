@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react'
+import { Mail, Lock, LogIn, AlertCircle, Stethoscope, Briefcase, ShieldCheck } from 'lucide-react'
 
 const demoUsers = {
   'pharmacist@falconmed.com': {
@@ -10,7 +10,7 @@ const demoUsers = {
     employeeId: 1,
     branchId: '1',
     branch: 'Main Branch',
-    password: '123456'
+    password: '123456',
   },
   'manager@falconmed.com': {
     id: 'ph_005',
@@ -19,15 +19,15 @@ const demoUsers = {
     role: 'manager',
     branchId: '1',
     branch: 'Main Branch',
-    password: '123456'
+    password: '123456',
   },
   'admin@falconmed.com': {
     id: 'ph_005',
     email: 'admin@falconmed.com',
     name: 'Mohammed Al-Kaabi',
     role: 'admin',
-    password: '123456'
-  }
+    password: '123456',
+  },
 }
 
 export default function Login({ onLoginSuccess }) {
@@ -72,16 +72,18 @@ export default function Login({ onLoginSuccess }) {
     <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 overflow-y-auto">
       <div className="min-h-screen flex items-center justify-center p-4 py-8">
         <div className="w-full max-w-md">
+          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-block mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mx-auto">
-                <span className="text-white text-3xl">ðŸ’Š</span>
+                <Stethoscope size={32} className="text-white" />
               </div>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">FalconMed Elite</h1>
             <p className="text-gray-600 font-medium">Pharmacy Management Dashboard v3.0</p>
           </div>
 
+          {/* Card */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 mb-6 p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign In</h2>
 
@@ -121,7 +123,7 @@ export default function Login({ onLoginSuccess }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg py-3 pl-10 pr-4 text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                    placeholder="••••••••"
                     required
                   />
                 </div>
@@ -143,33 +145,41 @@ export default function Login({ onLoginSuccess }) {
               <div className="flex-1 h-px bg-gray-200"></div>
             </div>
 
-            <div>
+            <div className="space-y-3">
+              {/* Pharmacist */}
               <button
                 type="button"
                 onClick={() => handleQuickLogin('pharmacist@falconmed.com')}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-blue-200 font-semibold py-3 rounded-lg transition-all mb-3"
+                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-blue-200 font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
               >
-                ðŸ‘¨â€âš•ï¸ Pharmacist Dashboard
+                <Stethoscope size={18} />
+                Pharmacist Dashboard
               </button>
+
+              {/* Manager */}
               <button
                 type="button"
                 onClick={() => handleQuickLogin('manager@falconmed.com')}
-                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-200 font-semibold py-3 rounded-lg transition-all mb-3"
+                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-200 font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
               >
-                ðŸ‘” Manager Dashboard
+                <Briefcase size={18} />
+                Manager Dashboard
               </button>
+
+              {/* Admin */}
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin@falconmed.com')}
-                className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-2 border-purple-200 font-semibold py-3 rounded-lg transition-all"
+                className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-2 border-purple-200 font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
               >
-                ðŸ” Admin Dashboard
+                <ShieldCheck size={18} />
+                Admin Dashboard
               </button>
             </div>
           </div>
 
           <div className="text-center text-gray-600 text-xs pb-4">
-            <p>Â© 2026 FalconMed â€¢ Professional Pharmacy Management</p>
+            <p>© 2026 FalconMed • Professional Pharmacy Management</p>
             <p className="mt-1 text-gray-500">Version 3.0 Elite Edition</p>
           </div>
         </div>
