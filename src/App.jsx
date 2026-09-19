@@ -10,21 +10,31 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser))
+        } catch (e) {
+          localStorage.removeItem('user')
+        }
+      }
     }
     setLoading(false)
   }, [])
 
   const handleLoginSuccess = (userData) => {
     setUser(userData)
-    localStorage.setItem('user', JSON.stringify(userData))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(userData))
+    }
   }
 
   const handleLogout = () => {
     setUser(null)
-    localStorage.removeItem('user')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user')
+    }
   }
 
   if (loading) {
@@ -44,21 +54,28 @@ function App() {
       <Routes>
         {/* Queue Machine Simulator - Public */}
         <Route path="/simulator" element={<QueueMachineSimulator />} />
-        
+
         {/* Login Page */}
-        <Route path="/login" element={
-          user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />
-        } />
-        
+        <Route
+          path="/login"
+          element={
+            user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />
+          }
+        />
+
         {/* Dashboard - Protected */}
-        <Route path="/dashboard" element={
-          user ? <DashboardLayout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-        } />
-        
+        <Route
+          path="/dashboard"
+          element={
+            user ? <DashboardLayout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+          }
+        />
+
         {/* Default Route */}
-        <Route path="/" element={
-          user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />
-        } />
+        <Route
+          path="/"
+          element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />}
+        />
       </Routes>
     </Router>
   )

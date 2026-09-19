@@ -1,57 +1,73 @@
 import { useState, useEffect } from 'react'
-import { Plus, Send, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
+import {
+  Plus, Send, RefreshCw, CheckCircle, AlertCircle,
+  Zap, Users, Timer, TrendingUp, Activity
+} from 'lucide-react'
+import { API_BASE } from '../config/api'
+import { BRANCHES, SERVICE_TYPES } from '../config/constants'
+import { formatMinutes, formatNumber } from '../utils/formatters'
 
 export default function QueueMachineSimulator() {
-  // API Base - Works on localhost AND Vercel
-  const API_BASE = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:3000/api'
-    : 'https://falconmed-backend.onrender.com/api'
-
   const [patientData, setPatientData] = useState({
     patient_id: '',
     patient_name: '',
     branch_id: 1,
-    service_type: 'pharmacy'
+    service_type: 'pharmacy',
   })
 
   const [loading, setLoading] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('')
   const [history, setHistory] = useState([])
-  
-  // Live Stats State
   const [stats, setStats] = useState(null)
 
-  // Fetch Live Stats
+  // ─── Fetch Stats ────────────────────────────────────────
   useEffect(() => {
+    let mounted = true
     const fetchStats = async () => {
       try {
-        const response = await fetch(
-          `${API_BASE}/queue/stats?userId=ph_001`
-        )
-        const data = await response.json()
-        if (data.success) setStats(data.data)
-      } catch (error) {
-        console.error('Stats error:', error)
+        const res = await fetch(`${API_BASE}/queue/stats?userId=ph_001`)
+        const data = await res.json()
+        if (mounted && data.success) setStats(data.data)
+      } catch (err) {
+        console.error('Stats error:', err)
       }
     }
-
     fetchStats()
     const interval = setInterval(fetchStats, 5000)
-    return () => clearInterval(interval)
-  }, [API_BASE])
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
 
+  // ─── Handlers ────────────────────────────────────────────
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setPatientData(prev => ({
+    setPatientData((prev) => ({
       ...prev,
-      [name]: name === 'branch_id' ? parseInt(value) : value
+      [name]: name === 'branch_id' ? parseInt(value, 10) : value,
     }))
   }
 
+  const registerPatient = async (patient) => {
+  const identified = patient.identified !== undefined 
+    ? patient.identified 
+    : Math.random() > 0.3
+
+  const res = await fetch(`${API_BASE}/queue/patient-arrival`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...patient, identified }),
+  })
+  const data = await res.json()
+  if (!data.success) throw new Error(data.error || 'Failed')
+  return data
+}
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
     if (!patientData.patient_id || !patientData.patient_name) {
       setMessage('❌ Please fill in all fields')
       setMessageType('error')
@@ -62,289 +78,336 @@ export default function QueueMachineSimulator() {
     setMessage('')
 
     try {
-      const response = await fetch(
-        `${API_BASE}/queue/patient-arrival`,
+      await registerPatient(patientData)
+      setMessage(`✅ Registered: ${patientData.patient_name}`)
+      setMessageType('success')
+
+      setHistory((prev) => [
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patientData)
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        setMessage(`✅ Patient registered: ${patientData.patient_name}`)
-        setMessageType('success')
-        
-        // Add to history
-        setHistory(prev => [{
           id: patientData.patient_id,
           name: patientData.patient_name,
+          branch: BRANCHES.find((b) => b.id === patientData.branch_id)?.name,
+          service: patientData.service_type,
           timestamp: new Date().toLocaleTimeString(),
-          status: 'Registered'
-        }, ...prev])
+          status: 'Registered',
+        },
+        ...prev,
+      ])
 
-        // Reset form
-        setPatientData({
-          patient_id: '',
-          patient_name: '',
-          branch_id: 1,
-          service_type: 'pharmacy'
-        })
-      } else {
-        setMessage(`❌ Error: ${data.error}`)
-        setMessageType('error')
-      }
-    } catch (error) {
-      setMessage(`❌ Connection Error: ${error.message}`)
+      setPatientData({
+        patient_id: '',
+        patient_name: '',
+        branch_id: 1,
+        service_type: 'pharmacy',
+      })
+    } catch (err) {
+      setMessage(`❌ ${err.message}`)
       setMessageType('error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleQuickAdd = () => {
+  // ─── Bulk Add ───────────────────────────────────────────
+  const handleBulkAdd = async (count = 5) => {
+    if (!confirm(`Register ${count} random patients?`)) return
+    setBulkLoading(true)
+    setMessage('')
+
+    const firstNames = ['Ahmed', 'Sara', 'Mohammed', 'Fatima', 'Omar', 'Layla', 'Khalid', 'Noor', 'Zain', 'Hana']
+    const lastNames = ['Ali', 'Mohamed', 'Hassan', 'Khaled', 'Ahmed', 'Saeed', 'Ibrahim', 'Yousef']
+
+    let successCount = 0
+    const bulkHistory = []
+
+    for (let i = 0; i < count; i++) {
+      const patientId = `AUTO-${Date.now()}-${i}`
+      const patientName = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+      const branchId = Math.floor(Math.random() * 3) + 1
+      const serviceType = SERVICE_TYPES[Math.floor(Math.random() * SERVICE_TYPES.length)].value
+
+      try {
+        await registerPatient({
+          patient_id: patientId,
+          patient_name: patientName,
+          branch_id: branchId,
+          service_type: serviceType,
+        })
+        successCount++
+        bulkHistory.push({
+          id: patientId,
+          name: patientName,
+          branch: BRANCHES.find((b) => b.id === branchId)?.name,
+          service: serviceType,
+          timestamp: new Date().toLocaleTimeString(),
+          status: 'Auto',
+        })
+      } catch (err) {
+        console.error('Bulk error:', err)
+      }
+
+      await new Promise((r) => setTimeout(r, 100))
+    }
+
+    setHistory((prev) => [...bulkHistory, ...prev])
+    setMessage(`✅ Added ${successCount}/${count} patients`)
+    setMessageType(successCount === count ? 'success' : 'error')
+    setBulkLoading(false)
+  }
+
+  const handleQuickFill = () => {
     const randomId = `P${Math.floor(Math.random() * 10000)}`
     const names = ['أحمد علي', 'فاطمة محمد', 'محمد حسن', 'سارة خالد', 'علي محمود', 'نور الدين']
-    const randomName = names[Math.floor(Math.random() * names.length)]
-    
     setPatientData({
       patient_id: randomId,
-      patient_name: randomName,
-      branch_id: 1,
-      service_type: 'pharmacy'
+      patient_name: names[Math.floor(Math.random() * names.length)],
+      branch_id: Math.floor(Math.random() * 3) + 1,
+      service_type: 'pharmacy',
     })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">🖥️ Queue Machine Simulator</h1>
-          <p className="text-blue-200">Test the Patient Registration Flow</p>
+          <div className="inline-flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-2xl">
+              🖥️
+            </div>
+            <h1 className="text-4xl font-bold text-white">Queue Machine Simulator</h1>
+          </div>
+          <p className="text-slate-400">نظام توليد مرضى لاختبار النظام في الوقت الفعلي</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Form Panel */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-xl p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Register Patient</h2>
+          {/* Left Column */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-blue-400" /> Register Patient
+              </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                
-                {/* Patient ID */}
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Patient ID
-                  </label>
+                  <label className="block text-xs text-slate-400 mb-1.5">Patient ID</label>
                   <input
                     type="text"
                     name="patient_id"
                     value={patientData.patient_id}
                     onChange={handleInputChange}
-                    placeholder="e.g., P001"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    placeholder="P001"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-blue-500"
                     disabled={loading}
                   />
                 </div>
 
-                {/* Patient Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Patient Name
-                  </label>
+                  <label className="block text-xs text-slate-400 mb-1.5">Patient Name</label>
                   <input
                     type="text"
                     name="patient_name"
                     value={patientData.patient_name}
                     onChange={handleInputChange}
-                    placeholder="e.g., أحمد علي"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    placeholder="أحمد علي"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-blue-500"
                     disabled={loading}
                   />
                 </div>
 
-                {/* Branch ID */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Branch
-                  </label>
+                  <label className="block text-xs text-slate-400 mb-1.5">Branch</label>
                   <select
                     name="branch_id"
                     value={patientData.branch_id}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-blue-500"
                     disabled={loading}
                   >
-                    <option value={1}>Main Branch</option>
-                    <option value={2}>Dusit Branch</option>
-                    <option value={3}>Ruwi Branch</option>
+                    {BRANCHES.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* Service Type */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Service Type
-                  </label>
+                  <label className="block text-xs text-slate-400 mb-1.5">Service Type</label>
                   <select
                     name="service_type"
                     value={patientData.service_type}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-blue-500"
                     disabled={loading}
                   >
-                    <option value="pharmacy">Pharmacy</option>
-                    <option value="consultation">Consultation</option>
-                    <option value="vaccination">Vaccination</option>
+                    {SERVICE_TYPES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.icon} {s.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* Status Message */}
                 {message && (
-                  <div className={`p-3 rounded-lg text-sm font-semibold flex items-center gap-2 ${
-                    messageType === 'success' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {messageType === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                  <div
+                    className={`p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                      messageType === 'success'
+                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-red-500/10 text-red-300 border border-red-500/30'
+                    }`}
+                  >
+                    {messageType === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     {message}
                   </div>
                 )}
 
-                {/* Buttons */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-sm transition flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    <Send size={18} />
+                    <Send size={14} />
                     {loading ? 'Sending...' : 'Submit'}
                   </button>
-
                   <button
                     type="button"
-                    onClick={handleQuickAdd}
+                    onClick={handleQuickFill}
                     disabled={loading}
-                    className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-lg text-sm transition flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    <RefreshCw size={18} />
-                    Quick Test
+                    <RefreshCw size={14} />
+                    Fill Random
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Instructions */}
-            <div className="bg-blue-100 rounded-xl p-4 mt-6">
-              <h3 className="font-bold text-blue-900 mb-2">📝 How to Test:</h3>
-              <ol className="text-sm text-blue-800 space-y-1">
-                <li>1. Fill in patient info</li>
-                <li>2. Click Submit</li>
-                <li>3. Check Stats Below</li>
-                <li>4. Watch Real-time Update!</li>
+            {/* Bulk Actions */}
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Zap size={20} className="text-amber-400" /> Bulk Generate
+              </h2>
+              <p className="text-xs text-slate-400 mb-3">
+                سجّل مرضى بسرعة لاختبار النظام
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleBulkAdd(5)}
+                  disabled={bulkLoading}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg text-sm transition disabled:opacity-50"
+                >
+                  {bulkLoading ? '...' : '+5 patients'}
+                </button>
+                <button
+                  onClick={() => handleBulkAdd(10)}
+                  disabled={bulkLoading}
+                  className="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold py-2 rounded-lg text-sm transition disabled:opacity-50"
+                >
+                  {bulkLoading ? '...' : '+10 patients'}
+                </button>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-sm text-blue-200">
+              <p className="font-semibold mb-2">💡 How to Test:</p>
+              <ol className="space-y-1 text-xs text-blue-300/80">
+                <li>1. سجّل مريض جديد أو استخدم Bulk</li>
+                <li>2. افتح Pharmacist Dashboard في تاب آخر</li>
+                <li>3. شاهد المرضى يظهرون فوراً</li>
+                <li>4. جرب Call/Complete من الداشبورد</li>
               </ol>
             </div>
           </div>
 
-          {/* Live Status & History */}
+          {/* Right Column */}
           <div className="lg:col-span-2 space-y-6">
-            
-            {/* Status Card */}
-            <div className="bg-gradient-to-br from-green-400 to-green-600 rounded-xl shadow-xl p-6 text-white">
-              <h2 className="text-2xl font-bold mb-2">✅ API Status</h2>
-              <p className="text-lg mb-4">Backend: <span className="font-bold">LIVE</span></p>
-              <p className="text-sm">
-                Endpoint: {API_BASE}/queue/patient-arrival
-              </p>
-              <p className="text-xs mt-2">Environment: {typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '🏠 Localhost' : '☁️ Vercel'}</p>
-            </div>
-
-            {/* Live Queue Stats */}
             {stats && (
-              <div className="bg-white rounded-xl shadow-xl p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Live Queue Statistics</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
-                    <p className="text-sm text-gray-600">Total Patients</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.total_patients}</p>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-600">
-                    <p className="text-sm text-gray-600">Waiting</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats.waiting}</p>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
-                    <p className="text-sm text-gray-600">In Service</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.in_service}</p>
-                  </div>
-                  <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-600">
-                    <p className="text-sm text-gray-600">Identified</p>
-                    <p className="text-2xl font-bold text-teal-600">{stats.identified}</p>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-600">
-                    <p className="text-sm text-gray-600">Avg Wait (min)</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats.avg_waiting_time}</p>
-                  </div>
-                  <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-600">
-                    <p className="text-sm text-gray-600">Avg Service (min)</p>
-                    <p className="text-2xl font-bold text-indigo-600">{stats.avg_service_time}</p>
-                  </div>
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Activity size={20} className="text-emerald-400" /> Live Statistics
+                  </h2>
+                  <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Live
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-4">🔄 Auto-refreshing every 5 seconds</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <StatBox icon={<Users size={16} />} label="Total Patients" value={formatNumber(stats.total_patients)} color="blue" />
+                  <StatBox icon={<Timer size={16} />} label="Waiting" value={formatNumber(stats.waiting)} color="amber" />
+                  <StatBox icon={<Activity size={16} />} label="In Service" value={formatNumber(stats.in_service)} color="emerald" />
+                  <StatBox icon={<CheckCircle size={16} />} label="Identified" value={formatNumber(stats.identified)} color="cyan" />
+                  <StatBox icon={<Timer size={16} />} label="Avg Wait" value={formatMinutes(stats.avg_waiting_time)} color="purple" />
+                  <StatBox icon={<TrendingUp size={16} />} label="Avg Service" value={formatMinutes(stats.avg_service_time)} color="indigo" />
+                </div>
               </div>
             )}
 
-            {/* Registration History */}
-            <div className="bg-white rounded-xl shadow-xl p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Plus size={24} className="text-blue-600" />
-                Registration History
-              </h2>
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl">
+              <div className="p-6 border-b border-slate-700/50 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Plus size={20} className="text-blue-400" /> Registration History
+                </h2>
+                <span className="text-xs text-slate-400">{history.length} recent</span>
+              </div>
 
               {history.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No patients registered yet</p>
-                  <p className="text-sm mt-2">Start by filling the form and clicking Submit</p>
+                <div className="p-12 text-center">
+                  <div className="text-6xl mb-4 opacity-30">📋</div>
+                  <p className="text-slate-400">No patients registered yet</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    ابدأ بتسجيل مريض أو استخدم Bulk Generate
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {history.map((patient, idx) => (
-                    <div key={idx} className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border-l-4 border-blue-600">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-bold text-gray-900">{patient.name}</p>
-                          <p className="text-sm text-gray-600">ID: {patient.id}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-green-600">{patient.status}</p>
-                          <p className="text-xs text-gray-500">{patient.timestamp}</p>
-                        </div>
+                <div className="divide-y divide-slate-700/30 max-h-96 overflow-y-auto">
+                  {history.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 hover:bg-slate-700/30 transition flex justify-between items-center"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-white text-sm truncate">{p.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {p.id} • {p.branch} • {p.service}
+                        </p>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-xs font-semibold text-emerald-400">{p.status}</p>
+                        <p className="text-xs text-slate-500">{p.timestamp}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* Next Steps */}
-            <div className="bg-purple-100 rounded-xl p-6">
-              <h3 className="font-bold text-purple-900 mb-2">🚀 Next Steps:</h3>
-              <ul className="text-sm text-purple-800 space-y-1">
-                <li>✅ Register patients via this simulator</li>
-                <li>✅ Watch Queue Statistics update in real-time</li>
-                <li>✅ Check total patients, waiting, in service</li>
-                <li>✅ Monitor average wait & service times</li>
-                <li>✅ Works on Localhost AND Vercel!</li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function StatBox({ icon, label, value, color }) {
+  const colors = {
+    blue: 'text-blue-400 border-blue-500/30',
+    amber: 'text-amber-400 border-amber-500/30',
+    emerald: 'text-emerald-400 border-emerald-500/30',
+    cyan: 'text-cyan-400 border-cyan-500/30',
+    purple: 'text-purple-400 border-purple-500/30',
+    indigo: 'text-indigo-400 border-indigo-500/30',
+  }
+
+  return (
+    <div className={`bg-slate-900/40 border ${colors[color]} rounded-lg p-3`}>
+      <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className={`text-2xl font-bold ${colors[color].split(' ')[0]}`}>{value}</p>
     </div>
   )
 }

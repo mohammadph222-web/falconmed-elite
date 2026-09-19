@@ -3,16 +3,17 @@ import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react'
 
 const demoUsers = {
   'pharmacist@falconmed.com': {
-    id: 'usr_ph_001',
+    id: 'ph_001',
     email: 'pharmacist@falconmed.com',
     name: 'LAMA AL-REMIT',
     role: 'pharmacist',
     employeeId: 1,
+    branchId: 'br_001',
     branch: 'Main Branch',
     password: '123456'
   },
   'manager@falconmed.com': {
-    id: 'usr_mg_001',
+    id: 'ph_005',
     email: 'manager@falconmed.com',
     name: 'Fatima Al-Ameri',
     role: 'manager',
@@ -21,7 +22,7 @@ const demoUsers = {
     password: '123456'
   },
   'admin@falconmed.com': {
-    id: 'usr_ad_001',
+    id: 'ph_005',
     email: 'admin@falconmed.com',
     name: 'Mohammed Al-Kaabi',
     role: 'admin',
@@ -142,7 +143,7 @@ export default function Login({ onLoginSuccess }) {
               <div className="flex-1 h-px bg-gray-200"></div>
             </div>
 
-            <div style={{ maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('pharmacist@falconmed.com')}
